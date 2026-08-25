@@ -23,6 +23,7 @@ export default function Login() {
     try {
       const d = await api.post('/api/auth/login', { username, password });
       setToken(d.token);
+      localStorage.setItem('noc_weakpw', d.weakPassword ? '1' : '0');
       nav('/');
       window.location.reload();
     } catch (ex) {

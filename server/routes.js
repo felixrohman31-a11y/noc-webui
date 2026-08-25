@@ -23,6 +23,9 @@ function findDevice(id) {
 }
 
 // ---------- AUTH ----------
+// Perintah destruktif diblokir dari panel (semua vendor)
+const DESTRUCTIVE_RE = /(reboot|shutdown|reload|reset[- _]?config|restore[- _]?default|factory[- _]?reset|write?[- ]?erase|wr\s+er|erase\b|format\b|del\s+flash|delete\s+flash|\brm\s|mkfs|dd\s+if=|system\s+reset|sys\s+reset|remove\s+configuration)/i;
+
 router.post('/auth/login', (req, res) => {
   const ip = req.ip || 'unknown';
   if (!auth.loginAllowed(ip)) {
@@ -36,7 +39,8 @@ router.post('/auth/login', (req, res) => {
     return res.status(401).json({ error: 'Username atau password salah' + (left <= 2 ? ` (${left} percobaan tersisa)` : '') });
   }
   store.audit('login', 'user logged in', user.username, ip);
-  res.json({ token: auth.sign(user), user: { id: user.id, username: user.username, role: user.role } });
+  const weakPassword = user.username === 'admin' && require('bcryptjs').compareSync('admin123', user.passwordHash);
+  res.json({ token: auth.sign(user), user: { id: user.id, username: user.username, role: user.role }, weakPassword });
 });
 
 router.get('/auth/me', auth.authMiddleware, (req, res) => {
@@ -235,8 +239,8 @@ router.post('/devices/:id/command', auth.authMiddleware, async (req, res) => {
   if (!d) return res.status(404).json({ error: 'Device tidak ditemukan' });
   const cmd = String(req.body.command || '').trim();
   if (!cmd) return res.status(400).json({ error: 'command kosong' });
-  if (/^(conf(igure)?\s+t|reload|reboot)/i.test(cmd)) {
-    return res.status(400).json({ error: 'Perintah konfigurasi/reload diblokir dari panel ini' });
+  if (DESTRUCTIVE_RE.test(cmd)) {
+    return res.status(400).json({ error: 'Perintah destruktif diblokir dari panel ini' });
   }
   try {
     const out = await withSession(d, devicePassword(d), async s => await s.run(cmd), store.getDb().settings.sshTimeoutMs + 15000);
@@ -606,9 +610,9 @@ router.post('/notify/test', auth.authMiddleware, auth.requireAdmin, async (req, 
   res.json(r);
 });
 
-// ---------- API KEYS (otomasi/scripting) ----------
+// ---------- API KEYS (otomasi/scripting) — disimpan sebagai hash ----------
 router.get('/apikeys', auth.authMiddleware, auth.requireAdmin, (req, res) => {
-  const keys = (store.getDb().settings.apiKeys || []).map(({ key, ...k }) => ({ ...k, hint: key.slice(0, 6) + '...' }));
+  const keys = (store.getDb().settings.apiKeys || []).map(({ keyHash, key, ...k }) => k);
   res.json({ keys });
 });
 
@@ -619,7 +623,14 @@ router.post('/apikeys', auth.authMiddleware, auth.requireAdmin, (req, res) => {
   const key = require('crypto').randomBytes(24).toString('base64url');
   const s = store.getDb().settings;
   s.apiKeys = s.apiKeys || [];
-  const entry = { id: 'key-' + Date.now().toString(36), name: String(name).slice(0, 40), key, role: r, createdAt: new Date().toISOString() };
+  const entry = {
+    id: 'key-' + Date.now().toString(36),
+    name: String(name).slice(0, 40),
+    role: r,
+    createdAt: new Date().toISOString(),
+    hint: key.slice(0, 6) + '...',
+    keyHash: auth.hashKey(key)
+  };
   s.apiKeys.push(entry);
   store.save();
   store.audit('apikey.created', `${entry.name} (${r})`, req.user.username, req.ip);

@@ -51,6 +51,11 @@ function Shell({ children }) {
   ];  return (
     <div className="flex h-full">
       <aside className="w-56 shrink-0 bg-[#0d1526] border-r border-[#1e2a44] flex flex-col">
+        {localStorage.getItem('noc_weakpw') === '1' && (
+          <a href="#/settings" className="block px-3 py-2 text-[11px] bg-amber-500/15 text-amber-300 border-b border-amber-500/30 hover:bg-amber-500/25">
+            ⚠ Password admin masih default — <b>klik untuk ganti</b>
+          </a>
+        )}
         <div className="flex items-center gap-2 px-4 py-5 border-b border-[#1e2a44]">
           <Network className="text-cyan-400" size={22} />
           <div>

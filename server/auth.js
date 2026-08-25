@@ -6,10 +6,29 @@
 
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
 const store = require('./store');
 
-const SECRET = process.env.NOC_JWT_SECRET || 'noc-webui-dev-secret-change-me';
 const TOKEN_TTL = '12h';
+let _secret = null;
+
+/** Secret JWT: dari env, atau auto-generate + persist (tidak ada lagi default hardcoded) */
+function getSecret() {
+  if (_secret) return _secret;
+  if (process.env.NOC_JWT_SECRET) { _secret = process.env.NOC_JWT_SECRET; return _secret; }
+  const f = path.join(store.DATA_DIR, 'jwt.secret');
+  try {
+    _secret = fs.readFileSync(f, 'utf8').trim();
+    if (_secret) return _secret;
+  } catch {}
+  _secret = crypto.randomBytes(48).toString('hex');
+  fs.writeFileSync(f, _secret, { mode: 0o600 });
+  console.warn('[auth] NOC_JWT_SECRET tidak diset — secret acak digenerate & disimpan di ' + f);
+  console.warn('[auth] CATATAN: restart menghapus sesi login jika file ini hilang. Set NOC_JWT_SECRET untuk deployment multi-instans.');
+  return _secret;
+}
 
 // ---- rate limit login sederhana (per IP) ----
 const attempts = new Map(); // ip -> {count, resetAt}
@@ -48,17 +67,40 @@ function ensureAdminUser() {
 }
 
 function sign(user) {
-  return jwt.sign({ sub: user.id, username: user.username, role: user.role || 'operator' }, SECRET, { expiresIn: TOKEN_TTL });
+  return jwt.sign({ sub: user.id, username: user.username, role: user.role || 'operator' }, getSecret(), { expiresIn: TOKEN_TTL });
 }
 
 function verify(token) {
-  try { return jwt.verify(token, SECRET); } catch { return null; }
+  try { return jwt.verify(token, getSecret()); } catch { return null; }
+}
+
+// ---- API key: disimpan sebagai SHA-256 hash (bukan plaintext) ----
+function hashKey(plain) {
+  return crypto.createHash('sha256').update(String(plain)).digest('hex');
+}
+function safeEqualHex(aHex, bHex) {
+  const a = Buffer.from(aHex, 'hex'), b = Buffer.from(bHex, 'hex');
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+function findApiKey(plainKey) {
+  const list = store.getDb().settings.apiKeys || [];
+  const inputHash = hashKey(plainKey);
+  for (const k of list) {
+    if (k.key && !k.keyHash) { // migrasi entri lama yang masih plaintext
+      k.keyHash = hashKey(k.key);
+      k.hint = k.key.slice(0, 6) + '...';
+      delete k.key;
+      store.save();
+    }
+    if (k.keyHash && safeEqualHex(inputHash, k.keyHash)) return k;
+  }
+  return null;
 }
 
 function authMiddleware(req, res, next) {
   const apiKey = req.headers['x-api-key'] || (req.query && req.query.api_key);
   if (apiKey) {
-    const entry = (store.getDb().settings.apiKeys || []).find(k => k.key === apiKey);
+    const entry = findApiKey(String(apiKey));
     if (!entry) return res.status(401).json({ error: 'API key tidak valid' });
     req.user = { sub: 'apikey:' + entry.name, username: 'apikey:' + entry.name, role: entry.role || 'operator' };
     return next();
@@ -148,5 +190,5 @@ function setRole(id, role) {
 module.exports = {
   ROLES, ensureAdminUser, sign, verify, authMiddleware, requireAdmin,
   authenticate, changePassword, loginAllowed, loginFail,
-  listUsers, createUser, deleteUser, resetPassword, setRole
+  listUsers, createUser, deleteUser, resetPassword, setRole, hashKey
 };

@@ -46,6 +46,7 @@ export default function SettingsPage() {
     try {
       await api.post('/api/auth/change-password', { oldPassword: oldPw, newPassword: newPw });
       toast.push('ok', 'Password berhasil diganti');
+      localStorage.setItem('noc_weakpw', '0');
       setOldPw(''); setNewPw('');
     } catch (e) { toast.push('err', e.message); }
     finally { setSavingP(false); }
