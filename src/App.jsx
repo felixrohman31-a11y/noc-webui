@@ -16,7 +16,11 @@ import Audit from './pages/Audit';
 import SettingsPage from './pages/SettingsPage';
 import UsersPage from './pages/Users';
 
-import { LayoutDashboard, Server, Archive, TerminalSquare, ScrollText, Settings, Network, Users } from 'lucide-react';
+import { LayoutDashboard, Server, Archive, TerminalSquare, ScrollText, Settings, Network, Users, Heart } from 'lucide-react';
+import { Modal, Button } from './components/ui';
+
+const BNB_ADDRESS = '0x4649b364523D4DdC329583E218f20d52b2997367';
+const APP_VERSION = 'v0.1.0';
 
 
 import { Users as UsersIcon } from 'lucide-react';
@@ -61,13 +65,48 @@ function Shell({ children }) {
             </a>
           ))}
         </nav>
-        <div className="px-4 py-3 border-t border-[#1e2a44] flex items-center gap-2 text-xs text-slate-500">
-          <span className={`inline-block w-2 h-2 rounded-full ${conn === 'live' ? 'bg-emerald-400' : 'bg-amber-400 animate-pulse'}`} />
-          {conn === 'live' ? 'Live feed aktif' : 'Menyambungkan...'}
+        <div className="px-4 py-3 border-t border-[#1e2a44] space-y-2">
+          <div className="flex items-center gap-2 text-xs text-slate-500">
+            <span className={`inline-block w-2 h-2 rounded-full ${conn === 'live' ? 'bg-emerald-400' : 'bg-amber-400 animate-pulse'}`} />
+            {conn === 'live' ? 'Live feed aktif' : 'Menyambungkan...'}
+            <span className="ml-auto text-slate-600">{APP_VERSION}</span>
+          </div>
+          <DonateLink />
         </div>
       </aside>
       <main className="flex-1 overflow-y-auto p-6">{children}</main>
     </div>
+  );
+}
+
+function DonateLink() {
+  const [open, setOpen] = React.useState(false);
+  const [copied, setCopied] = React.useState(false);
+  return (
+    <>
+      <button onClick={() => { setOpen(true); setCopied(false); }}
+        className="w-full flex items-center justify-center gap-1.5 text-xs text-amber-400/90 hover:text-amber-300 border border-[#1e2a44] rounded-lg py-1.5 hover:bg-slate-700/30 transition-colors">
+        <Heart size={11} className="text-amber-400" fill="currentColor" /> Support
+      </button>
+      <Modal open={open} onClose={() => setOpen(false)} title="Dukung Pengembangan ☕">
+        <p className="text-sm text-slate-300 mb-3">
+          NOC Control Center gratis & open-source. Kalau bermanfaat, dukung pengembangan lanjutan via <b>BNB (BEP-20 / BSC)</b>:
+        </p>
+        <div className="bg-[#0b1220] border border-[#1e2a44] rounded-lg p-3 font-mono text-xs text-amber-300 break-all select-all">
+          {BNB_ADDRESS}
+        </div>
+        <div className="flex justify-end gap-2 mt-4">
+          <Button variant="ghost" onClick={() => setOpen(false)}>Tutup</Button>
+          <Button onClick={() => {
+            navigator.clipboard?.writeText(BNB_ADDRESS).then(
+              () => { setCopied(true); setTimeout(() => setCopied(false), 2000); },
+              () => {}
+            );
+          }}>{copied ? '✔ Tersalin!' : 'Salin Alamat'}</Button>
+        </div>
+        <p className="text-[11px] text-slate-500 mt-3">Pastikan jaringan pengiriman <b>BEP-20 (BSC)</b> — alamat ini bukan wallet ERC-20/BTC.</p>
+      </Modal>
+    </>
   );
 }
 

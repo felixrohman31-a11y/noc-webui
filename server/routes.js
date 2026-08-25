@@ -635,7 +635,10 @@ router.get('/system/info', auth.authMiddleware, (req, res) => {
   const fs = require('fs');
   let dbSize = 0;
   try { dbSize = fs.statSync(require('./store').DB_FILE).size; } catch {}
+  let version = '0.1.0';
+  try { version = require('../package.json').version; } catch {}
   res.json({
+    version,
     node: process.version,
     platform: process.platform,
     uptimeSec: Math.floor(process.uptime()),

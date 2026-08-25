@@ -138,6 +138,30 @@ data/                 # runtime (di-gitignore): db.json, history.json, .secret.k
 - Untuk produksi: taruh di balik reverse-proxy HTTPS (nginx/Caddy/IIS), batasi akses jaringan manajemen
 - Ganti `NOC_JWT_SECRET` via environment variable
 
+## 🗺️ Roadmap
+
+### Fase 1 — Quick Wins
+- [ ] **Prometheus exporter** (`/metrics`) → grafik Grafana tanpa chart sendiri
+- [ ] **Syslog server** (UDP 514) — pusat log semua device + alert dari log
+- [ ] **Notifikasi Email (SMTP) + Slack**
+- [ ] **Cek firmware update** MikroTik via API
+- [ ] **IPAM ringan** (visualisasi pemakaian IP dari DHCP lease/pool/address-list)
+- [ ] **PWA / mobile-friendly**
+
+### Fase 2 — Core NMS
+- [ ] **SNMP monitoring traffic** — bandwidth per interface untuk semua vendor (gap terbesar)
+- [ ] **Alert rule engine** — aturan per device/tag, jadwal senyap, eskalasi, acknowledge
+- [ ] **Config drift detection** — alert bila config berubah dari baseline known-good
+- [ ] **Backup off-site** (SCP/S3/git)
+
+### Fase 3 — Premium
+- [ ] **Topology map** otomatis dari LLDP/CDP/neighbor
+- [ ] **Laporan SLA bulanan** (HTML/PDF)
+- [ ] **HTTPS built-in + 2FA (TOTP)**
+- [ ] **NetFlow/sFlow**
+
+> Progress di-update di [Releases](https://github.com/felixrohman31-a11y/noc-webui/releases) — request fitur? Buka [Issue](https://github.com/felixrohman31-a11y/noc-webui/issues).
+
 ## Author & Lisensi
 
 **© 2026 [felixrohman31-a11y](https://github.com/felixrohman31-a11y)** — [noc-webui](https://github.com/felixrohman31-a11y/noc-webui)
@@ -145,4 +169,21 @@ data/                 # runtime (di-gitignore): db.json, history.json, .secret.k
 Dirilis di bawah lisensi [MIT](LICENSE). Anda bebas menggunakan/memodifikasi, **asal notice copyright & lisensi ini disertakan** di setiap salinan. Menghapus atribusi = pelanggaran lisensi.
 
 > Jika proyek ini bermanfaat, mohon jangan hapus tautan repo asli dari README turunannya.
+
+---
+
+## 💰 Dukung Pengembangan
+
+Proyek ini gratis dan open-source. Kalau bermanfaat dan ingin mendukung pengembangan lanjutan:
+
+**BNB (BEP-20 / BSC Network)**
+
+```
+0x4649b364523D4DdC329583E218f20d52b2997367
+```
+
+[![Donate BNB](https://img.shields.io/badge/💰_Donate-BNB_(BEP20)-F0B90B?style=for-the-badge)](https://github.com/felixrohman31-a11y/noc-webui#-dukung-pengembangan)
+
+Setiap donasi sangat berarti untuk biaya listrik, perangkat uji, dan kopi ☕ — terima kasih! 🙏
+
 
