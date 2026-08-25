@@ -1,4 +1,4 @@
-# NOC Control Center
+# Network Control Center
 
 WebUI full-stack untuk **kontrol terpusat perangkat jaringan multi-vendor** — dibangun murni dengan Node.js, tanpa dependensi native, jalan di Windows & Linux.
 
