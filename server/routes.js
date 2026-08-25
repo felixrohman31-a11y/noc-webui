@@ -47,6 +47,11 @@ router.get('/auth/me', auth.authMiddleware, (req, res) => {
   res.json({ user: req.user });
 });
 
+router.post('/auth/logout', auth.authMiddleware, (req, res) => {
+  store.audit('logout', 'user logged out', req.user.username, req.ip);
+  res.json({ ok: true });
+});
+
 router.post('/auth/change-password', auth.authMiddleware, (req, res) => {
   const r = auth.changePassword(req.user.sub, req.body.oldPassword, req.body.newPassword);
   if (!r.ok) return res.status(400).json({ error: r.error });

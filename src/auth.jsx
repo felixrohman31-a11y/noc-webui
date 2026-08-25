@@ -25,8 +25,25 @@ export function AuthProvider({ children }) {
       .finally(() => setLoading(false));
   }, []);
 
+  const logout = () => {
+    try {
+      const t = getToken();
+      if (t) {
+        fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + t },
+          keepalive: true
+        }).catch(() => {});
+      }
+    } catch {}
+    setToken(null);
+    localStorage.removeItem('noc_weakpw');
+    setUser(null);
+    window.location.hash = '#/login';
+  };
+
   return (
-    <AuthCtx.Provider value={{ user, setUser, loading }}>
+    <AuthCtx.Provider value={{ user, setUser, loading, logout }}>
       {children}
     </AuthCtx.Provider>
   );

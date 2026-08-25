@@ -22,7 +22,7 @@ import Audit from './pages/Audit';
 import SettingsPage from './pages/SettingsPage';
 import UsersPage from './pages/Users';
 
-import { LayoutDashboard, Server, Archive, TerminalSquare, ScrollText, Settings, Network, Users, Heart } from 'lucide-react';
+import { LayoutDashboard, Server, Archive, TerminalSquare, ScrollText, Settings, Network, Users, Heart, LogOut } from 'lucide-react';
 import { Modal, Button } from './components/ui';
 
 const BNB_ADDRESS = '0x4649b364523D4DdC329583E218f20d52b2997367';
@@ -35,7 +35,7 @@ const NAV_UNUSED = null;
 
 function Shell({ children }) {
   const [conn, setConn] = React.useState('connecting');
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   React.useEffect(() => {
     const unsub = subscribeEvents(() => setConn('live'));
     return unsub;
@@ -77,6 +77,15 @@ function Shell({ children }) {
           ))}
         </nav>
         <div className="px-4 py-3 border-t border-[#1e2a44] space-y-2">
+          <button
+            onClick={() => {
+              if (window.confirm('Keluar dari NOC Control?')) logout();
+            }}
+            className="w-full flex items-center justify-center gap-1.5 text-xs text-red-300/90 hover:text-red-200 hover:bg-red-500/15 border border-[#1e2a44] rounded-lg py-1.5 transition-colors"
+            title="Logout"
+          >
+            <LogOut size={11} /> Logout{user?.username ? ` (${user.username})` : ''}
+          </button>
           <div className="flex items-center gap-2 text-xs text-slate-500">
             <span className={`inline-block w-2 h-2 rounded-full ${conn === 'live' ? 'bg-emerald-400' : 'bg-amber-400 animate-pulse'}`} />
             {conn === 'live' ? 'Live feed aktif' : 'Menyambungkan...'}
