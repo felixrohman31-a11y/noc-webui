@@ -138,6 +138,11 @@ data/                 # runtime (di-gitignore): db.json, history.json, .secret.k
 - Untuk produksi: taruh di balik reverse-proxy HTTPS (nginx/Caddy/IIS), batasi akses jaringan manajemen
 - Ganti `NOC_JWT_SECRET` via environment variable
 
-## Lisensi
+## Author & Lisensi
 
-MIT
+**© 2026 [felixrohman31-a11y](https://github.com/felixrohman31-a11y)** — [noc-webui](https://github.com/felixrohman31-a11y/noc-webui)
+
+Dirilis di bawah lisensi [MIT](LICENSE). Anda bebas menggunakan/memodifikasi, **asal notice copyright & lisensi ini disertakan** di setiap salinan. Menghapus atribusi = pelanggaran lisensi.
+
+> Jika proyek ini bermanfaat, mohon jangan hapus tautan repo asli dari README turunannya.
+

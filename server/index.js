@@ -1,3 +1,8 @@
+/*!
+ * NOC Control Center — multi-vendor network management WebUI
+ * © 2026 felixrohman31-a11y — https://github.com/felixrohman31-a11y/noc-webui
+ * Licensed under MIT (see LICENSE)
+ */
 const express = require('express');
 const path = require('path');
 const fs = require('fs');

@@ -1,5 +1,6 @@
 /**
  * Minimal pure-JS client untuk RouterOS API (protokol biner, port 8728/8729).
+ * Bagian dari NOC Control Center — © 2026 felixrohman31-a11y (MIT)
  * Referensi protokol: MikroTik Wiki - API / API protocol.
  * Tanpa dependensi eksternal -> aman dipakai di Windows/Linux/Docker.
  */

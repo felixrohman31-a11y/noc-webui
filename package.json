@@ -4,6 +4,12 @@
   "description": "Centralized Network Operations Center WebUI - multi-vendor device control",
   "private": true,
   "type": "commonjs",
+  "author": "felixrohman31-a11y <felixrohman31-a11y@users.noreply.github.com> (https://github.com/felixrohman31-a11y)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/felixrohman31-a11y/noc-webui.git"
+  },
+  "license": "MIT",
   "scripts": {
     "dev": "concurrently -k -n server,web \"npm:dev:server\" \"npm:dev:web\"",
     "dev:server": "node server/index.js",
