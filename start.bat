@@ -1,4 +1,6 @@
 @echo off
+REM NOC Control Center - (c) 2026 felixrohman31-a11y (MIT) - https://github.com/felixrohman31-a11y/noc-webui - bebas dipakai
+@echo off
 title NOC Control Center
 cd /d "%~dp0"
 echo ============================================
@@ -21,3 +23,4 @@ goto :eof
 echo.
 echo [ERROR] Gagal menjalankan. Pastikan Node.js sudah ter-install (node -v).
 pause
+

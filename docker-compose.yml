@@ -1,3 +1,4 @@
+# NOC Control Center - (c) 2026 felixrohman31-a11y (MIT) - bebas dipakai
 services:
   noc-webui:
     build: .
@@ -14,3 +15,4 @@ services:
 
 volumes:
   nocdata:
+

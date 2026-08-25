@@ -1,3 +1,9 @@
+/*!
+ * NOC Control Center — © 2026 felixrohman31-a11y (MIT License)
+ * https://github.com/felixrohman31-a11y/noc-webui
+ * Bebas diunduh, digunakan, dan dimodifikasi — sertakan notice ini pada salinan.
+ */
+
 /**
  * Menu CLI Browser untuk vendor berbasis SSH (non-API).
  * Setiap menu = kumpulan show/display command read-only yang dijalankan

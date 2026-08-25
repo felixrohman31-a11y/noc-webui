@@ -2,7 +2,11 @@
 
 WebUI full-stack untuk **kontrol terpusat perangkat jaringan multi-vendor** — dibangun murni dengan Node.js, tanpa dependensi native, jalan di Windows & Linux.
 
-![stack](https://img.shields.io/badge/React-Vite-cyan) ![backend](https://img.shields.io/badge/Express-SSH%20%2B%20RouterOS%20API-blue) ![platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20Docker-success)
+![stack](https://img.shields.io/badge/React-Vite-cyan) ![backend](https://img.shields.io/badge/Express-SSH%20%2B%20RouterOS%20API-blue) ![platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20Docker-success) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) ![free](https://img.shields.io/badge/100%25-FREE_to_use-brightgreen)
+
+> ✅ **100% GRATIS** — bebas diunduh, dipasang, digunakan (termasuk komersial), dan dimodifikasi di bawah lisensi [MIT](LICENSE). Tanpa biaya, tanpa limitasi fitur, tanpa telemetri.
+
+**Author:** [felixrohman31-a11y](https://github.com/felixrohman31-a11y) · [Releases](https://github.com/felixrohman31-a11y/noc-webui/releases) · [Laporkan bug](https://github.com/felixrohman31-a11y/noc-webui/issues)
 
 ## Vendor yang Didukung
 

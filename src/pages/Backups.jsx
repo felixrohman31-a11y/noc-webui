@@ -1,3 +1,9 @@
+/*!
+ * NOC Control Center — © 2026 felixrohman31-a11y (MIT License)
+ * https://github.com/felixrohman31-a11y/noc-webui
+ * Bebas diunduh, digunakan, dan dimodifikasi — sertakan notice ini pada salinan.
+ */
+
 import React, { useEffect, useMemo, useState } from 'react';
 import { api } from '../api';
 import { Card, Button, Empty, Spinner, Modal, Field, inputCls, useToast } from '../components/ui';

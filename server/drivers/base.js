@@ -1,3 +1,9 @@
+/*!
+ * NOC Control Center — © 2026 felixrohman31-a11y (MIT License)
+ * https://github.com/felixrohman31-a11y/noc-webui
+ * Bebas diunduh, digunakan, dan dimodifikasi — sertakan notice ini pada salinan.
+ */
+
 const { Client } = require('ssh2');
 const { RosApiSession } = require('./routeros-api');
 

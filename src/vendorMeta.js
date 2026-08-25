@@ -1,3 +1,9 @@
+/*!
+ * NOC Control Center — © 2026 felixrohman31-a11y (MIT License)
+ * https://github.com/felixrohman31-a11y/noc-webui
+ * Bebas diunduh, digunakan, dan dimodifikasi — sertakan notice ini pada salinan.
+ */
+
 export const VENDOR_META = {
   mikrotik: { id: 'mikrotik', label: 'MikroTik RouterOS', color: '#29b6f6' },
   cisco: { id: 'cisco', label: 'Cisco IOS / IOS-XE', color: '#1ba0d7' },
