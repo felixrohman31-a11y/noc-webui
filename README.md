@@ -293,7 +293,7 @@ Dirilis di bawah lisensi [MIT](LICENSE). Anda bebas menggunakan/memodifikasi, **
 
 Proyek ini gratis dan open-source. Kalau bermanfaat, ada beberapa jalur dukungan:
 
-### Langsung — Crypto
+### Private Wallet — Crypto
 **BNB (BEP-20 / BSC Network)**
 ```
 0x4649b364523D4DdC329583E218f20d52b2997367
