@@ -2,11 +2,129 @@
 
 WebUI full-stack untuk **kontrol terpusat perangkat jaringan multi-vendor** — dibangun murni dengan Node.js, tanpa dependensi native, jalan di Windows & Linux.
 
-![stack](https://img.shields.io/badge/React-Vite-cyan) ![backend](https://img.shields.io/badge/Express-SSH%20%2B%20RouterOS%20API-blue) ![platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20Docker-success) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) ![free](https://img.shields.io/badge/100%25-FREE_to_use-brightgreen)
+![stack](https://img.shields.io/badge/React-Vite-cyan) ![backend](https://img.shields.io/badge/Express-SSH%20%2B%20RouterOS%20API-blue) ![platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20-success) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) ![free](https://img.shields.io/badge/100%25-FREE_to_use-brightgreen)
 
 > ✅ **100% GRATIS** — bebas diunduh, dipasang, digunakan (termasuk komersial), dan dimodifikasi di bawah lisensi [MIT](LICENSE). Tanpa biaya, tanpa limitasi fitur, tanpa telemetri.
 
 **Author:** [felixrohman31-a11y](https://github.com/felixrohman31-a11y) · [Releases](https://github.com/felixrohman31-a11y/noc-webui/releases) · [Laporkan bug](https://github.com/felixrohman31-a11y/noc-webui/issues)
+
+---
+
+## Requirements
+
+| Komponen | Minimal | Catatan |
+|---|---|---|
+| Node.js | **v18.17+** | Debian 12 repo: `apt install nodejs npm` |
+| npm | v9+ | Ikut dengan Node.js |
+| RAM | 512 MB | Cukup untuk panel + SSH session |
+| Disk | 100 MB | Source + node_modules |
+| OS | Debian 11/12, Ubuntu 22.04+ | Juga jalan di Windows |
+
+> Tidak ada dependency native, tidak perlu Docker, tidak perlu database.
+
+---
+
+## Deploy — Step by Step
+
+### 1. Install Node.js
+
+```bash
+# Debian 12 / Ubuntu 22.04+
+apt update
+apt install -y nodejs npm
+node -v   # harus >= 18.17
+```
+
+### 2. Clone & Build
+
+```bash
+git clone https://github.com/felixrohman31-a11y/noc-webui.git /opt/noc-webui
+cd /opt/noc-webui
+npm install
+npm run build
+```
+
+### 3. Konfigurasi
+
+```bash
+cat > .env <<'EOF'
+PORT=3000
+SESSION_SECRET=ganti-dengan-secret-acak-panjang
+EOF
+chmod 600 .env
+```
+
+### 4. Jalankan
+
+```bash
+npm start
+# Panel jalan di http://<ip>:3000
+# Login default: admin / admin123 — segera ganti di menu Pengaturan
+```
+
+### 5. Systemd (auto-start)
+
+```bash
+cat > /etc/systemd/system/noc-webui.service <<'EOF'
+[Unit]
+Description=NOC WebUI - Network Control Center
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/noc-webui
+Environment=NODE_ENV=production
+Environment=PORT=3000
+ExecStart=/usr/bin/npm start
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable --now noc-webui
+```
+
+### 6. Nginx Reverse Proxy (opsional, untuk HTTPS)
+
+```bash
+apt install -y nginx
+# Buat self-signed cert
+openssl req -x509 -nodes -days 3650 -newkey rsa:2048   -keyout /etc/nginx/ssl/noc.key -out /etc/nginx/ssl/noc.crt   -subj "/CN=$(hostname -I | awk '{print $1}')"
+
+cat > /etc/nginx/sites-available/noc-webui <<'EOF'
+server {
+    listen 80;
+    return 301 https://$host$request_uri;
+}
+server {
+    listen 443 ssl;
+    ssl_certificate /etc/nginx/ssl/noc.crt;
+    ssl_certificate_key /etc/nginx/ssl/noc.key;
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+EOF
+
+ln -sf /etc/nginx/sites-available/noc-webui /etc/nginx/sites-enabled/
+nginx -t && systemctl reload nginx
+```
+
+### Updating
+
+```bash
+cd /opt/noc-webui && git pull && npm install && npm run build && systemctl restart noc-webui
+```
+
+---
+
+
 
 ## Vendor yang Didukung
 
@@ -63,11 +181,6 @@ npm start          # serve semuanya di http://0.0.0.0:3000
 ```
 
 Login default: `admin / admin123` — **segera ganti** di menu Pengaturan.
-
-### Docker
-```bash
-docker compose up -d
-```
 
 ### Windows (klik-2x)
 Double-click `start.bat` — otomatis install/build/start lalu buka browser.
@@ -186,20 +299,6 @@ Proyek ini gratis dan open-source. Kalau bermanfaat, ada beberapa jalur dukungan
 0x4649b364523D4DdC329583E218f20d52b2997367
 ```
 
-### Platform
-| Jalur | Link | Catatan |
-|---|---|---|
-| GitHub Sponsors | `github.com/sponsors/felixrohman31-a11y` | aktif setelah developer join Sponsors |
-| Trakteer / Saweria 🇮🇩 | *(isi username Anda)* | QRIS, e-wallet, bank — lokal |
-| Ko-fi / BuyMeACoffee | *(isi username Anda)* | via PayPal |
-| Open Collective | *(isi slug)* | fiscal host, butuh invoice resmi |
-
-[![Donate BNB](https://img.shields.io/badge/💰_Donate-BNB_(BEP20)-F0B90B?style=for-the-badge)](https://github.com/felixrohman31-a11y/noc-webui#-dukung-pengembangan)
-[![Sponsor](https://img.shields.io/badge/♥_Sponsor-GitHub_Sponsors-EA4AAA?style=for-the-badge)](https://github.com/sponsors/felixrohman31-a11y)
-
-Setiap donasi sangat berarti untuk biaya listrik, perangkat uji, dan kopi ☕ — terima kasih! 🙏
-
-> 💡 Tombol **♥ Sponsor** di header repo dikontrol oleh file [`.github/FUNDING.yml`](.github/FUNDING.yml) — buka komentar platform yang sudah Anda punya, push, tombolnya langsung muncul.
 
 
 
