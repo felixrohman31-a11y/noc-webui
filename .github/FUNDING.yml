@@ -1,0 +1,22 @@
+# FUNDING — tombol "♥ Sponsor" di header repo aktif dari file ini.
+# Hapus komentar (#) pada baris platform yang sudah Anda punya akunnya.
+# Maksimal 4 entri yang ditampilkan GitHub di header repo.
+# Dokumentasi: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/displaying-a-sponsor-button-in-your-repository
+
+# 1) GitHub Sponsors native (syarat: region didukung + Stripe Connect + 2FA)
+#    Daftar di: https://github.com/sponsors/accounts
+# github: felixrohman31-a11y
+
+# 2) Platform internasional
+# ko-fi: usernamekofi
+# buy_me_a_coffee: usernamebmc
+# patreon: usernamepatreon
+# liberapay: usernameliberapay
+# open_collective: projectslug
+
+# 3) Platform lokal Indonesia (QRIS / e-wallet / bank)
+# custom: ['https://trakteer.id/username/tip']
+# custom: ['https://saweria.co/username']
+
+# 4) Crypto (BNB) — tidak ada key resmi; arahkan custom link ke halaman berisi alamat:
+# custom: ['https://github.com/felixrohman31-a11y/noc-webui#-dukung-pengembangan']

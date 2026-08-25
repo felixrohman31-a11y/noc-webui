@@ -178,16 +178,28 @@ Dirilis di bawah lisensi [MIT](LICENSE). Anda bebas menggunakan/memodifikasi, **
 
 ## 💰 Dukung Pengembangan
 
-Proyek ini gratis dan open-source. Kalau bermanfaat dan ingin mendukung pengembangan lanjutan:
+Proyek ini gratis dan open-source. Kalau bermanfaat, ada beberapa jalur dukungan:
 
+### Langsung — Crypto
 **BNB (BEP-20 / BSC Network)**
-
 ```
 0x4649b364523D4DdC329583E218f20d52b2997367
 ```
 
+### Platform
+| Jalur | Link | Catatan |
+|---|---|---|
+| GitHub Sponsors | `github.com/sponsors/felixrohman31-a11y` | aktif setelah developer join Sponsors |
+| Trakteer / Saweria 🇮🇩 | *(isi username Anda)* | QRIS, e-wallet, bank — lokal |
+| Ko-fi / BuyMeACoffee | *(isi username Anda)* | via PayPal |
+| Open Collective | *(isi slug)* | fiscal host, butuh invoice resmi |
+
 [![Donate BNB](https://img.shields.io/badge/💰_Donate-BNB_(BEP20)-F0B90B?style=for-the-badge)](https://github.com/felixrohman31-a11y/noc-webui#-dukung-pengembangan)
+[![Sponsor](https://img.shields.io/badge/♥_Sponsor-GitHub_Sponsors-EA4AAA?style=for-the-badge)](https://github.com/sponsors/felixrohman31-a11y)
 
 Setiap donasi sangat berarti untuk biaya listrik, perangkat uji, dan kopi ☕ — terima kasih! 🙏
+
+> 💡 Tombol **♥ Sponsor** di header repo dikontrol oleh file [`.github/FUNDING.yml`](.github/FUNDING.yml) — buka komentar platform yang sudah Anda punya, push, tombolnya langsung muncul.
+
 
 
