@@ -1,0 +1,16 @@
+# dependensi & build
+node_modules/
+dist/
+
+# data runtime — BERISI KREDENSI TERENKRIPSI + KUNCI. JANGAN commit!
+data/
+*.log
+server_out.log
+server_err.log
+
+# sistem/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

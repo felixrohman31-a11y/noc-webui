@@ -1,0 +1,16 @@
+services:
+  noc-webui:
+    build: .
+    container_name: noc-webui
+    ports:
+      - "3000:3000"
+    environment:
+      - NOC_JWT_SECRET=ganti-dengan-rahasia-panjang
+      - PORT=3000
+      - HOST=0.0.0.0
+    volumes:
+      - nocdata:/app/data
+    restart: unless-stopped
+
+volumes:
+  nocdata:
