@@ -46,11 +46,11 @@ export default function Login() {
         {err && <div className="mb-4 text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">{err}</div>}
         <label className="block mb-3 text-sm">
           <span className="text-slate-400 text-xs">Username</span>
-          <input className={inputCls + ' mt-1'} value={username} onChange={e => setUsername(e.target.value)} autoFocus />
+          <input className={inputCls + ' mt-1'} value={username} onChange={e => setUsername(e.target.value)} autoFocus autoComplete="username" />
         </label>
         <label className="block mb-5 text-sm">
           <span className="text-slate-400 text-xs">Password</span>
-          <input type="password" className={inputCls + ' mt-1'} value={password} onChange={e => setPassword(e.target.value)} />
+          <input type="password" className={inputCls + ' mt-1'} value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" />
         </label>
         <Button type="submit" loading={loading} className="w-full justify-center py-2">Masuk</Button>
         <p className="text-center text-[11px] text-slate-600 mt-5">Default: admin / admin123 — ganti setelah login pertama</p>

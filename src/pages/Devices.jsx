@@ -211,7 +211,7 @@ export default function Devices() {
               <Field label="Username kredensial" hint="Untuk deteksi OS/firmware otomatis (opsional tapi disarankan)">
                 <input className={inputCls} value={disc.username} onChange={e => setDisc(s => ({ ...s, username: e.target.value }))} placeholder="admin" autoComplete="off" />
               </Field>
-              <Field label="Password"><input type="password" className={inputCls} value={disc.password} onChange={e => setDisc(s => ({ ...s, password: e.target.value }))} autoComplete="new-password" /></Field>
+              <Field label="Password"><SecretInput className={inputCls} value={disc.password} onChange={v => setDisc(s => ({ ...s, password: v }))} /></Field>
             </div>
 
             {disc.results && (
@@ -280,7 +280,7 @@ export default function Devices() {
                     byIp.set(c.ip, cur);
                   });
                   const items = [...byIp.values()].map(x => ({
-                    ip: x.ip, port: x.sshPort || 22, vendor: x.vendor,
+                    ip: x.ip, ...(x.sshPort ? { port: x.sshPort } : {}), vendor: x.vendor,
                     transport: x.transport, apiPort: x.apiPort || undefined,
                     name: x.name, model: x.model, os: x.os
                   }));
@@ -337,7 +337,7 @@ export default function Devices() {
                 </>
               )}
               <Field label="Username"><input className={inputCls} value={modal.data.username} onChange={e => setModal(m => ({ ...m, data: { ...m.data, username: e.target.value } }))} placeholder="admin" /></Field>
-              <Field label={modal.mode === 'edit' ? 'Password (kosongkan = tetap)' : 'Password'}><input type="password" className={inputCls} value={modal.data.password} onChange={e => setModal(m => ({ ...m, data: { ...m.data, password: e.target.value } }))} /></Field>
+              <Field label={modal.mode === 'edit' ? 'Password (kosongkan = tetap)' : 'Password'}><SecretInput className={inputCls} value={modal.data.password} onChange={v => setModal(m => ({ ...m, data: { ...m.data, password: v } }))} /></Field>
               <Field label="Model" hint={detect.msg || 'Klik Deteksi untuk ambil otomatis dari perangkat'}>
                 <div className="flex gap-2">
                   <input className={inputCls} value={modal.data.model} onChange={e => setModal(m => ({ ...m, data: { ...m.data, model: e.target.value } }))} placeholder="otomatis via Deteksi..." />

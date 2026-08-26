@@ -718,7 +718,7 @@ router.post('/discover/add', auth.authMiddleware, (req, res) => {
         cur.apiPort = Number(it.apiPort);
         if (String(it.transport).startsWith('api')) cur.transport = it.transport;
       } else {
-        cur.sshPort = Number(it.sshPort) || Number(it.port) || 22;
+        cur.sshPort = Number(it.sshPort) || Number(it.port) || null;
         if (!cur.apiPort) cur.transport = 'ssh';
       }
       mergedMap.set(it.ip, cur);
@@ -726,12 +726,13 @@ router.post('/discover/add', auth.authMiddleware, (req, res) => {
 
     const added = [];
     for (const x of mergedMap.values()) {
-      if (db.devices.some(d => d.host === x.ip && Number(d.port) === Number(x.sshPort || 22))) continue;
+      // skip hanya bila device dengan IP sama + port SSH sama sudah ada
+      if (db.devices.some(d => d.host === x.ip && (!x.sshPort || Number(d.port) === Number(x.sshPort)))) continue;
       const dev = {
         id: store.nextId('dev'),
         name: x.name,
         host: x.ip,
-        port: Number(x.sshPort) || 22,
+        port: Number(x.sshPort) || undefined,
         vendor: x.vendor,
         model: x.model,
         location: '', tags: ['discovered'],

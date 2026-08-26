@@ -7,7 +7,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../api';
-import { Card, Button, Badge, Spinner, Modal, Field, inputCls, Empty, useToast, Checkbox, SelectedChip } from '../components/ui';
+import { Card, Button, Badge, Spinner, Modal, Field, inputCls, Empty, useToast, Checkbox, SelectedChip, SecretInput } from '../components/ui';
 import { ArrowLeft, RefreshCw, Plus, Pencil, Trash2, FolderTree, AlertTriangle } from 'lucide-react';
 
 const GROUP_ORDER = ['', 'IP', 'Firewall', 'Queue', 'PPP', 'System'];
@@ -143,8 +143,7 @@ export default function Winbox() {
       );
     }
     return (
-      <input type={f.t === 'pass' ? 'password' : 'text'} className={inputCls + ' font-mono'}
-        value={val} onChange={e => set(e.target.value)} />
+      <SecretInput className={inputCls + ' font-mono'} value={val} onChange={set} />
     );
   }
 

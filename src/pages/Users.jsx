@@ -7,7 +7,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../api';
 import { useAuth } from '../auth';
-import { Card, Button, Badge, Field, inputCls, Spinner, Empty, Modal, useToast } from '../components/ui';
+import { Card, Button, Badge, Field, inputCls, Spinner, Empty, Modal, useToast, SecretInput } from '../components/ui';
 import { Users as UsersIcon, Trash2, KeyRound } from 'lucide-react';
 
 const ROLE_COLOR = { admin: 'red', operator: 'cyan', viewer: 'slate' };
@@ -42,7 +42,7 @@ export default function Users() {
       <Card title="Tambah User">
         <div className="grid md:grid-cols-3 gap-x-4">
           <Field label="Username"><input className={inputCls} value={form.username} onChange={e => setForm(f => ({ ...f, username: e.target.value }))} placeholder="teknisi1" /></Field>
-          <Field label="Password" hint="min. 6 karakter"><input type="password" className={inputCls} value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} /></Field>
+          <Field label="Password" hint="min. 6 karakter"><SecretInput value={form.password} onChange={v => setForm(f => ({ ...f, password: v }))} /></Field>
           <Field label="Role" hint="viewer = hanya lihat; operator = boleh eksekusi perintah; admin = penuh">
             <select className={inputCls} value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))}>
               <option value="operator">operator</option>
@@ -95,7 +95,7 @@ function ResetForm({ reset, done }) {
   const toast = useToast();
   return (
     <>
-      <Field label="Password Baru"><input type="password" className={inputCls} value={pw} onChange={e => setPw(e.target.value)} autoFocus /></Field>
+      <Field label="Password Baru"><SecretInput value={pw} onChange={setPw} autoFocus /></Field>
       <div className="flex justify-end gap-2 mt-4">
         <Button variant="subtle" loading={busy}
           onClick={async () => {

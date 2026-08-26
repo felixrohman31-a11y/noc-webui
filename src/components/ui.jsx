@@ -141,6 +141,28 @@ export function Checkbox({ checked, onChange, size = 16, title }) {
   );
 }
 
+/** Input rahasia anti-password-manager: readonly sampai difokuskan + autocomplete new-password */
+export function SecretInput({ value, onChange, placeholder, className = '', autoFocus }) {
+  const ref = React.useRef(null);
+  const arm = el => {
+    if (!el) return;
+    el.setAttribute('autocomplete', 'new-password');
+    el.setAttribute('readonly', 'readonly');
+    if (autoFocus) el.setAttribute('data-autofocus', '');
+  };
+  return (
+    <input
+      ref={el => { ref.current = el; arm(el); }}
+      type="password"
+      className={className}
+      value={value}
+      placeholder={placeholder}
+      onFocus={() => { const el = ref.current; if (el) el.removeAttribute('readonly'); }}
+      onChange={e => onChange(e.target.value)}
+    />
+  );
+}
+
 /** Chip indikator jumlah baris terpilih + tombol bersihkan */
 export function SelectedChip({ count, onClear, label = 'dipilih' }) {
   if (!count) return null;

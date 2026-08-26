@@ -6,7 +6,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { api, getToken } from '../api';
-import { Card, Button, Field, inputCls, useToast, Badge } from '../components/ui';
+import { Card, Button, Field, inputCls, useToast, Badge, SecretInput } from '../components/ui';
 import { Download, Plus, Trash2, Upload, Cpu, KeyRound } from 'lucide-react';
 
 export default function SettingsPage() {
@@ -127,7 +127,7 @@ export default function SettingsPage() {
             <input className={inputCls + ' font-mono'} placeholder="123456789" value={settings.telegramChatId ?? ''} onChange={e => set('telegramChatId')(e.target.value)} />
           </Field>
           <Field label="Telegram Bot Token" hint="Dari @BotFather" mb={false}>
-            <input type="password" className={inputCls + ' font-mono'} placeholder="123456:ABC-DEF..." value={settings.telegramBotToken ?? ''} onChange={e => set('telegramBotToken')(e.target.value)} />
+            <SecretInput className={inputCls + ' font-mono'} placeholder="123456:ABC-DEF..." value={settings.telegramBotToken ?? ''} onChange={v => set('telegramBotToken')(v)} />
           </Field>
         </div>
         <div className="flex items-center justify-between mt-4 pt-3 border-t border-[#1e2a44]">
@@ -255,10 +255,10 @@ export default function SettingsPage() {
       <Card title="Ganti Password Akun Saya">
         <div className="grid md:grid-cols-2 gap-x-5 gap-y-1">
           <Field label="Password Lama" mb={false}>
-            <input type="password" className={inputCls} value={oldPw} onChange={e => setOldPw(e.target.value)} />
+            <SecretInput value={oldPw} onChange={setOldPw} />
           </Field>
           <Field label="Password Baru" hint="Minimal 6 karakter" mb={false}>
-            <input type="password" className={inputCls} value={newPw} onChange={e => setNewPw(e.target.value)} />
+            <SecretInput value={newPw} onChange={setNewPw} />
           </Field>
         </div>
         <div className="flex justify-end mt-4 pt-3 border-t border-[#1e2a44]">
