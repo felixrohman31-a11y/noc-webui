@@ -182,17 +182,14 @@ export default function Devices() {
       <Modal open={!!disc} onClose={() => setDisc(null)} title="Discovery — Scan Subnet + Deteksi OS/Firmware" wide>
         {disc && (
           <>
-            <div className="grid md:grid-cols-3 gap-x-4">
+            <div className="grid md:grid-cols-2 gap-x-4">
               <Field label="Subnet (CIDR)" hint="Maksimal /22. Contoh: 10.9.0.0/24">
                 <input className={inputCls + ' font-mono'} value={disc.cidr} onChange={e => setDisc(s => ({ ...s, cidr: e.target.value }))} placeholder="192.168.1.0/24" />
               </Field>
               <Field label="Port yang dicek (opsional)" hint="Kosong = fast scan: 22, 80, 443, 8728. Maks 6 port">
-                <input className={inputCls + ' font-mono'} value={disc.ports} onChange={e => setDisc(s => ({ ...s, ports: e.target.value }))} placeholder="22, 8728" />
-              </Field>
-              <div className="flex flex-col justify-end">
-                <span aria-hidden="true" className="block text-xs mt-1 mb-3 opacity-0 select-none">spacer</span>
-                <Button loading={disc.scanning} className="w-full justify-center"
-                  onClick={async () => {
+                <div className="flex gap-2">
+                  <input className={inputCls + ' font-mono'} value={disc.ports} onChange={e => setDisc(s => ({ ...s, ports: e.target.value }))} placeholder="22, 8728" />
+                  <Button loading={disc.scanning} onClick={async () => {
                     setDisc(s => ({ ...s, scanning: true, results: null }));
                     try {
                       const ports = disc.ports.split(',').map(x => Number(x.trim())).filter(Boolean);
@@ -206,7 +203,9 @@ export default function Devices() {
                       }
                     } catch (e) { toast.push('err', e.message); setDisc(s => ({ ...s, scanning: false })); }
                   }}><Radar size={14} /> Scan</Button>
-              </div>
+                </div>
+              </Field>
+            </div>
             </div>
 
             <div className="grid md:grid-cols-2 gap-x-4 mt-2 mb-3">
