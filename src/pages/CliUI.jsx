@@ -57,7 +57,7 @@ export default function CliUI() {
         <h1 className="text-xl font-bold text-slate-100 flex items-center gap-2">
           <FolderTree size={20} className="text-emerald-400" /> CLI Browser
         </h1>
-        {device && <Badge color="cyan">{device.name} · {device.host}:{device.port}</Badge>}
+        {device && <Badge color="cyan">{device.name} · {device.host}</Badge>}
       </div>
 
       {!err || menus?.length ? null : (

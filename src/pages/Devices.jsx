@@ -155,7 +155,7 @@ export default function Devices() {
               {filtered.map(d => (
                 <tr key={d.id} className="border-t border-[#1e2a44]/60 hover:bg-slate-700/20">
                   <td className="py-2.5"><Link className="text-cyan-300 hover:underline font-medium" to={`/devices/${d.id}`}>{d.name}</Link></td>
-                  <td className="py-2.5 text-slate-400 font-mono text-xs">{d.host}:{d.port}</td>
+                  <td className="py-2.5 text-slate-400 font-mono text-xs">{d.host}</td>
                   <td className="py-2.5"><Badge color="cyan">{getVendorMeta(d.vendor).label}</Badge></td>
                   <td className="py-2.5 text-slate-400 text-xs">{d.location || '-'}</td>
                   <td className="py-2.5">{(d.tags || []).length ? <span className="text-xs text-slate-500">{d.tags.join(', ')}</span> : '-'}</td>

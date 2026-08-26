@@ -98,7 +98,7 @@ export default function Dashboard() {
                 {devices.map(d => (
                   <tr key={d.id} className="border-t border-[#1e2a44]/60 hover:bg-slate-700/20">
                     <td className="py-2"><Link className="text-cyan-300 hover:underline" to={`/devices/${d.id}`}>{d.name}</Link></td>
-                    <td className="py-2 text-slate-400 font-mono text-xs">{d.host}:{d.port}</td>
+                    <td className="py-2 text-slate-400 font-mono text-xs">{d.host}</td>
                     <td className="py-2 text-slate-400 text-xs">{getVendorMeta(d.vendor).label}</td>
                     <td className="py-2">
                       <span className="flex items-center gap-2">

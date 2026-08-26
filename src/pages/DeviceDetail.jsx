@@ -166,7 +166,7 @@ export default function DeviceDetail() {
         <Link to="/devices" className="text-slate-400 hover:text-white"><ArrowLeft size={18} /></Link>
         <h1 className="text-xl font-bold text-slate-100">{device.name}</h1>
         <Badge color="cyan">{meta.label}</Badge>
-        <span className="flex items-center gap-2 text-sm text-slate-400"><StatusDot status={device.status?.online} /> {device.host}:{device.port}</span>
+        <span className="flex items-center gap-2 text-sm text-slate-400"><StatusDot status={device.status?.online} /> {device.host}</span>
         <Sparkline points={histPoints} />
         {uptime != null && <Badge color={uptime >= 95 ? 'green' : uptime >= 70 ? 'yellow' : 'red'}>{uptime}% up</Badge>}
         <div className="ml-auto flex gap-2">
