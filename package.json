@@ -1,6 +1,6 @@
 {
   "name": "noc-webui",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "Centralized Network Operations Center WebUI - multi-vendor device control",
   "private": true,
   "type": "commonjs",
