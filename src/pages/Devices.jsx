@@ -206,7 +206,6 @@ export default function Devices() {
                 </div>
               </Field>
             </div>
-            </div>
 
             <div className="grid md:grid-cols-2 gap-x-4 mt-2 mb-3">
               <Field label="Username kredensial" hint="Untuk deteksi OS/firmware otomatis (opsional tapi disarankan)">
