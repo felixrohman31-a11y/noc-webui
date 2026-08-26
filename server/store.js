@@ -30,6 +30,7 @@ const DEFAULTS = {
     alertLatencyMs: 0,
     alertConsecutiveN: 3,
     notifyCooldownSec: 300,
+    dataCacheSec: 20,
     apiKeys: []
   },
   meta: { seq: 1 }

@@ -25,6 +25,10 @@ function rateLimit(key, max, windowMs) {
 }
 function tooMany(res) { return res.status(429).json({ error: 'Terlalu banyak permintaan — coba lagi nanti' }); }
 
+// ---- cache snapshot data Config UI (menstabilkan tabel dinamis spt BGP) ----
+const rosDataCache = new Map(); // devId|menuKey -> {ts, rows, total}
+const MAX_ROWS_SENT = 1000;
+
 function sanitizeDevice(d) {
   const { passwordEnc, ...rest } = d;
   return rest;
@@ -436,6 +440,7 @@ router.put('/settings', auth.authMiddleware, auth.requireAdmin, (req, res) => {
   if (b.alertLatencyMs !== undefined) s.alertLatencyMs = Math.max(0, Math.min(60000, Number(b.alertLatencyMs) || 0));
   if (b.alertConsecutiveN !== undefined) s.alertConsecutiveN = Math.max(1, Math.min(30, Number(b.alertConsecutiveN) || 3));
   if (b.notifyCooldownSec !== undefined) s.notifyCooldownSec = Math.max(30, Math.min(86400, Number(b.notifyCooldownSec) || 300));
+  if (b.dataCacheSec !== undefined) s.dataCacheSec = Math.max(5, Math.min(600, Number(b.dataCacheSec) || 20));
   store.save();
   store.audit('settings.updated', 'konfigurasi diperbarui', req.user.username, req.ip);
   require('./scheduler').startScheduler();
@@ -972,10 +977,38 @@ router.get('/devices/:id/ros/data', auth.authMiddleware, async (req, res) => {
     const d = findDevice(req.params.id);
     rosGuard(d);
     const m = findMenu(String(req.query.key || ''));
-    const out = await withSession(d, devicePassword(d),
-      s => s.api.sentence([m.path + '/print']),
-      store.getDb().settings.sshTimeoutMs);
-    res.json({ rows: out.rows });
+    const force = String(req.query.refresh || '') === '1';
+    const db = store.getDb();
+    const TTL = Math.max(5, Number(db.settings.dataCacheSec) || 20) * 1000;
+    const cacheKey = d.id + '|' + m.key;
+    const now = Date.now();
+
+    if (!force) {
+      const c = rosDataCache.get(cacheKey);
+      if (c && now - c.ts < TTL) {
+        return res.json({ rows: c.rows.slice(0, MAX_ROWS_SENT), total: c.total, truncated: c.total > MAX_ROWS_SENT, cachedAt: c.ts, stale: false });
+      }
+    }
+
+    try {
+      const bigTable = ['routes', 'fw-conn', 'logs'].includes(m.key);
+      const fetchOpts = bigTable ? { maxRows: MAX_ROWS_SENT, ms: 12000 } : {};
+      const extraTimeout = bigTable ? 15000 : 0;
+      const out = await withSession(d, devicePassword(d),
+        s => s.api.sentence([m.path + '/print'], fetchOpts),
+        db.settings.sshTimeoutMs + extraTimeout);
+      const rows = out.rows || [];
+      const truncated = !!out.truncated || rows.length >= MAX_ROWS_SENT;
+      rosDataCache.set(cacheKey, { ts: Date.now(), rows, total: rows.length, truncated });
+      res.json({ rows: rows.slice(0, MAX_ROWS_SENT), total: rows.length, truncated, cachedAt: Date.now(), stale: false });
+    } catch (fetchErr) {
+      // fallback: kirim snapshot lama bila ada, agar UI tidak error
+      const c = rosDataCache.get(cacheKey);
+      if (c) {
+        return res.json({ rows: c.rows.slice(0, MAX_ROWS_SENT), total: c.total, truncated: c.total > MAX_ROWS_SENT, cachedAt: c.ts, stale: true, error: fetchErr.message });
+      }
+      throw fetchErr;
+    }
   } catch (e) { res.status(e.status || 502).json({ error: e.message }); }
 });
 

@@ -86,6 +86,9 @@ export default function SettingsPage() {
           <Field label="Timeout SSH/API (ms)" hint="2000 – 60000 ms">
             <input type="number" className={inputCls} value={settings.sshTimeoutMs ?? 10000} onChange={num('sshTimeoutMs')} />
           </Field>
+          <Field label="Snapshot data Config UI (detik)" hint="5 – 600 dtk. Data besar (BGP) dilayani dari snapshot agar stabil">
+            <input type="number" className={inputCls} value={settings.dataCacheSec ?? 20} onChange={num('dataCacheSec')} />
+          </Field>
           <Field label="Perintah backup — Generic" hint="Dipakai driver Generic">
             <input className={inputCls + ' font-mono'} value={settings.genericBackupCommand ?? ''} onChange={e => set('genericBackupCommand')(e.target.value)} />
           </Field>

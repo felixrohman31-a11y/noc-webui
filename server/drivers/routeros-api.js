@@ -82,17 +82,31 @@ class RosConnection {
     });
   }
 
-  /** Kirim satu kalimat (diantrekan otomatis), tunggu balasan sampai !done / !trap */
-  sentence(words) {
+  /**
+   * Kirim kalimat dan kumpulkan balasan.
+   * opts.maxRows -> selesaikan lebih awal saat jumlah baris tercapai (tabel besar spt BGP)
+   * opts.ms      -> deadline tambahan berbasis waktu
+   */
+  sentence(words, opts = {}) {
+    const maxRows = Number(opts.maxRows) || Infinity;
+    const softDeadline = opts.ms ? Date.now() + Number(opts.ms) : Infinity;
     const exec = () => new Promise((resolve, reject) => {
       if (!this.socket || this.socket.destroyed) return reject(new Error('koneksi API sudah tertutup'));
       const p = {
         rows: [],
         resolve,
         reject,
+        softTimer: null,
         timer: setTimeout(() => this._failPending(new Error('API timeout menunggu respons')), Math.max(this.timeout, 25000))
       };
       this.pending = p;
+      if (isFinite(maxRows) || isFinite(softDeadline)) {
+        p.softTimer = setInterval(() => {
+          if (p.rows.length >= maxRows || Date.now() > softDeadline) {
+            this._finish(p, { rows: p.rows.slice(0, maxRows), ret: undefined, truncated: true });
+          }
+        }, 60);
+      }
       try { this.socket.write(encodeSentence(words)); }
       catch (e) { this._failPending(e); }
     });
@@ -133,6 +147,7 @@ class RosConnection {
 
   _finish(p, val, err) {
     clearTimeout(p.timer);
+    if (p.softTimer) clearInterval(p.softTimer);
     this.pending = null;
     err ? p.reject(err) : p.resolve(val);
   }

@@ -38,6 +38,8 @@ export default function Winbox() {
   const [busy, setBusy] = useState(false);
   const [modal, setModal] = useState(null); // {mode:'add'|'edit', rid?, fields:[{k,t,src,opts}], params:{}}
   const [ifcOpts, setIfcOpts] = useState({ list: null, loading: false });
+  const [meta, setMeta] = useState(null);          // {total,cachedAt,stale,truncated}
+  const [routeType, setRouteType] = useState('all');
   const toast = useToast();
 
   async function loadBase() {
@@ -50,13 +52,15 @@ export default function Winbox() {
     return mn.menus;
   }
 
-  async function loadRows(key) {
+  async function loadRows(key, force) {
     if (!key) return;
     setBusy(true); setErr('');
     try {
-      const r = await api.get(`/api/devices/${id}/ros/data?key=${encodeURIComponent(key)}`);
+      const r = await api.get(`/api/devices/${id}/ros/data?key=${encodeURIComponent(key)}${force ? '&refresh=1' : ''}`);
       setRows(r.rows);
+      setMeta({ total: r.total ?? (r.rows || []).length, cachedAt: r.cachedAt, stale: !!r.stale, truncated: !!r.truncated });
       setSel({});
+      if (r.stale) toast.push('err', 'Fetch live gagal — menampilkan snapshot terakhir (' + (r.error || '').slice(0, 80) + ')');
     } catch (e) {
       setErr(e.message); setRows([]);
     } finally { setBusy(false); }
@@ -144,7 +148,10 @@ export default function Winbox() {
     );
   }
 
-  const filtered = (rows || []).filter(r =>
+  const baseRows = curKey === 'routes' && routeType !== 'all'
+    ? (rows || []).filter(r => r[routeType] === 'true')
+    : (rows || []);
+  const filtered = baseRows.filter(r =>
     !q || Object.values(r).some(v => String(v).toLowerCase().includes(q.toLowerCase()))
   );
   const selectedIds = Object.keys(sel).filter(k => sel[k]);
@@ -212,7 +219,18 @@ export default function Winbox() {
           {/* Area tabel */}
           <div className="flex-1 min-w-0 bg-[#111a2c] border border-[#1e2a44] rounded-xl flex flex-col">
             <div className="flex items-center gap-2 px-3 py-2.5 border-b border-[#1e2a44] flex-wrap">
-              <Button variant="ghost" loading={busy} onClick={() => loadRows(curKey)}><RefreshCw size={13} /> Refresh</Button>
+              <Button variant="ghost" loading={busy} onClick={() => loadRows(curKey, true)}><RefreshCw size={13} /> Refresh Snapshot</Button>
+              {curKey === 'routes' && (
+                <select className={inputCls + ' w-40 text-xs'} value={routeType}
+                  onChange={e => setRouteType(e.target.value)}>
+                  <option value="all">Semua jenis</option>
+                  <option value="static">Static</option>
+                  <option value="dynamic">Dynamic</option>
+                  <option value="bgp">BGP</option>
+                  <option value="ospf">OSPF</option>
+                  <option value="connected">Connected</option>
+                </select>
+              )}
               {caps.add && caps.add.length > 0 && <Button onClick={openAdd}><Plus size={14} /> Add</Button>}
               {caps.toggle && (
                 <>
@@ -244,6 +262,17 @@ export default function Winbox() {
                 Menu ini hanya-baca (perlindungan keselamatan)
               </div>
             )}
+
+            {(meta && curKey === cur?.key) || (meta && cur) ? (
+              <div className={`px-3 py-1.5 text-[11px] flex gap-3 items-center flex-wrap border-b border-[#1e2a44]/60 ${meta?.stale ? 'bg-red-500/10 text-red-300' : 'bg-slate-800/40 text-slate-400'}`}>
+                <span>📸 Snapshot: {meta?.cachedAt ? new Date(meta.cachedAt).toLocaleTimeString('id-ID') : '-'}</span>
+                {meta?.stale && <b>STALE — fetch live gagal, tampil snapshot terakhir</b>}
+                <span className="ml-auto">
+                  {meta?.truncated ? '≈ ' : ''}{rows ? rows.length.toLocaleString('id-ID') : 0} baris dimuat
+                  {meta?.truncated ? ' (teratas)' : ` · total ${Number(meta?.total ?? 0).toLocaleString('id-ID')}`}
+                </span>
+              </div>
+            ) : null}
 
             <div className="overflow-auto max-h-[62vh]">
               {err ? <Empty>{err}</Empty> :
