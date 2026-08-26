@@ -141,23 +141,23 @@ export function Checkbox({ checked, onChange, size = 16, title }) {
   );
 }
 
-/** Input rahasia anti-password-manager: readonly sampai difokuskan + autocomplete new-password */
-export function SecretInput({ value, onChange, placeholder, className = '', autoFocus }) {
+/** Input rahasia anti-password-manager: readonly hanya saat idle awal, aktif normal saat difokuskan */
+export function SecretInput({ value, onChange, placeholder, className = '' }) {
   const ref = React.useRef(null);
-  const arm = el => {
-    if (!el) return;
-    el.setAttribute('autocomplete', 'new-password');
-    el.setAttribute('readonly', 'readonly');
-    if (autoFocus) el.setAttribute('data-autofocus', '');
-  };
+  // pasang readonly SEKALI saja saat mount (jangan di-render ulang agar tidak mengunci ketikan)
+  React.useEffect(() => {
+    const el = ref.current;
+    if (el) el.setAttribute('readonly', 'readonly');
+  }, []);
   return (
     <input
-      ref={el => { ref.current = el; arm(el); }}
+      ref={ref}
       type="password"
+      autoComplete="new-password"
       className={className}
       value={value}
       placeholder={placeholder}
-      onFocus={() => { const el = ref.current; if (el) el.removeAttribute('readonly'); }}
+      onFocus={e => e.target.removeAttribute('readonly')}
       onChange={e => onChange(e.target.value)}
     />
   );

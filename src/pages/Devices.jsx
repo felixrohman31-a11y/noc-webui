@@ -271,8 +271,10 @@ export default function Devices() {
                     if (c.os) cur.os = c.os;
                     if (c.port === 8728) {
                       cur.apiPort = c.port;
-                      if (c.guessVendor === 'mikrotik') cur.vendor = 'mikrotik';
-                      if (cur.sshPort === null) cur.transport = 'api'; // hanya API tanpa SSH
+                      if (c.guessVendor === 'mikrotik') {
+                        cur.vendor = 'mikrotik';
+                        cur.transport = 'api'; // API selalu menang, terlepas dari urutan baris
+                      }
                     } else {
                       cur.sshPort = c.port;
                       cur.transport = cur.apiPort ? 'api' : 'ssh';
