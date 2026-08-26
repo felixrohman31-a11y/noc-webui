@@ -769,6 +769,31 @@ function buildWords(fields, params) {
   return words;
 }
 
+/** Validasi ketat parameter static route (mencegah salah config meruntuhkan jaringan) */
+function validateRouteParams(params, isAdd) {
+  if (!params) return null;
+  if (params['dst-address'] !== undefined && String(params['dst-address']).trim() !== '') {
+    const m = String(params['dst-address']).trim().match(/^(\d{1,3}(?:\.\d{1,3}){3})\/(\d{1,2})$/);
+    if (!m || m[1].split('.').some(o => Number(o) > 255) || Number(m[2]) > 32) {
+      return 'dst-address harus CIDR IPv4 valid (contoh: 10.0.0.0/24)';
+    }
+  } else if (isAdd) {
+    return 'dst-address wajib diisi';
+  }
+  if (params.gateway !== undefined && String(params.gateway).trim() !== '') {
+    if (!/^[A-Za-z0-9.:%\-]{1,64}$/.test(String(params.gateway).trim())) {
+      return 'gateway harus berupa IP / nama interface / "blackhole"';
+    }
+  } else if (isAdd) {
+    return 'gateway wajib diisi';
+  }
+  if (params.distance !== undefined && String(params.distance).trim() !== '') {
+    const d = Number(params.distance);
+    if (!Number.isInteger(d) || d < 1 || d > 255) return 'distance harus angka 1-255';
+  }
+  return null;
+}
+
 router.get('/devices/:id/ros/menu', auth.authMiddleware, (req, res) => {
   try {
     rosGuard(findDevice(req.params.id));
@@ -835,11 +860,17 @@ router.post('/devices/:id/ros/action', auth.authMiddleware, async (req, res) => 
       }
     }
 
-    let sentences = [];
-    let desc = '';
-
     // Catatan: tidak ada blokir blanket "readonly" — tiap aksi sudah divalidasi
     // lewat caps per-menu (menu tanpa caps otomatis menolak semua aksi tulis).
+
+    // guardrail khusus menu Routes
+    if (m.key === 'routes' && (act === 'add' || act === 'set')) {
+      const err = validateRouteParams(params, act === 'add');
+      if (err) throw Object.assign(new Error('Routes: ' + err), { status: 400 });
+    }
+
+    let sentences = [];
+    let desc = '';
 
     const extra = (caps.extras || []).find(x => 'extra:' + x.label === act || x.label === act.replace('extra:', ''));
     if (act === 'enable' || act === 'disable') {

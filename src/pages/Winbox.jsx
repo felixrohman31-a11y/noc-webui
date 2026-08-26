@@ -152,6 +152,19 @@ export default function Winbox() {
 
   function toggleSel(rid) { setSel(s => ({ ...s, [rid]: !s[rid] })); }
 
+  // peringatan ekstra untuk operasi berisiko di menu routing
+  function confirmFor(action, ids) {
+    if (curKey !== 'routes' || !['remove', 'disable', 'enable'].includes(action)) return null;
+    const hit = (rows || []).filter(r => ids.includes(r['.id']) && r['dst-address'] === '0.0.0.0/0');
+    if (hit.length) {
+      return `⚠ PERINGATAN: ${hit.length} DEFAULT ROUTE (0.0.0.0/0) ikut ter${action === 'remove' ? 'hapus' : 'nonaktif'}!\nSeluruh trafik internet bisa terputus. Lanjutkan?`;
+    }
+    return null;
+  }
+  function doActionSafe(action, ids) {
+    doAction(action, ids, null, confirmFor(action, ids) || undefined);
+  }
+
   return (
     <div className="max-w-7xl mx-auto space-y-4">
       <div className="flex items-center gap-3 flex-wrap">
@@ -203,8 +216,8 @@ export default function Winbox() {
               {caps.add && caps.add.length > 0 && <Button onClick={openAdd}><Plus size={14} /> Add</Button>}
               {caps.toggle && (
                 <>
-                  <Button variant="subtle" disabled={!selectedIds.length || busy} onClick={() => doAction('enable', selectedIds)}>Enable</Button>
-                  <Button variant="subtle" disabled={!selectedIds.length || busy} onClick={() => doAction('disable', selectedIds)}>Disable</Button>
+                  <Button variant="subtle" disabled={!selectedIds.length || busy} onClick={() => doActionSafe('enable', selectedIds)}>Enable</Button>
+                  <Button variant="subtle" disabled={!selectedIds.length || busy} onClick={() => doActionSafe('disable', selectedIds)}>Disable</Button>
                 </>
               )}
               {caps.edit && caps.edit.length > 0 && (
@@ -215,7 +228,7 @@ export default function Winbox() {
               )}
               {caps.remove && (
                 <Button variant="danger" disabled={!selectedIds.length || busy}
-                  onClick={() => doAction('remove', selectedIds, null, `Hapus ${selectedIds.length} entry dari ${cur?.label}?`)}>
+                  onClick={() => doActionSafe('remove', selectedIds)}>
                   <Trash2 size={13} /> Remove
                 </Button>
               )}
@@ -270,7 +283,8 @@ export default function Winbox() {
                                     onClick={() => doAction('extra:' + ex.label, [r['.id']], null, `${ex.label} untuk entry ini?`)}>{ex.label}</button>
                                 ))}
                                 {caps.edit && caps.edit.length > 0 && <button className="text-slate-400 hover:text-cyan-300" onClick={() => openEdit(r)}><Pencil size={12} /></button>}
-                                {caps.remove && <button className="text-slate-400 hover:text-red-400" onClick={() => doAction('remove', [r['.id']], null, 'Hapus entry ini?')}><Trash2 size={12} /></button>}
+                                {caps.remove && <button className="text-slate-400 hover:text-red-400"
+                                  onClick={() => doAction('remove', [r['.id']], null, confirmFor('remove', [r['.id']]) || 'Hapus entry ini?')}><Trash2 size={12} /></button>}
                               </td>
                             </tr>
                           );

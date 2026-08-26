@@ -36,7 +36,12 @@ module.exports = [
   {
     key: 'routes', group: 'IP', label: 'Routes', path: '/ip/route',
     cols: ['dst-address', 'gateway', 'distance', 'target-scope'],
-    readonly: true // routing terlalu berisiko untuk diedit dari web panel
+    // Routing bisa diedit dengan validasi ketat di server (lihat routes.js validateRouteParams)
+    caps: {
+      toggle: true, remove: true,
+      edit: [F('gateway'), F('distance', { t: 'num' }), F('comment')],
+      add: [F('dst-address'), F('gateway'), F('distance', { t: 'num' }), F('comment')]
+    }
   },
   {
     key: 'services', group: 'IP', label: 'Services', path: '/ip/service',
