@@ -57,8 +57,8 @@ export default function Backups() {
   }
 
   async function quickCompare(deviceName) {
-    const list = rows.filter(r => r.deviceName === deviceName).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    if (list.length < 2) return toast.push('info', 'Butuh minimal 2 backup untuk dibandingkan');
+    const list = rows.filter(r => r.deviceName === deviceName && !r.fallback).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    if (list.length < 2) return toast.push('info', 'Butuh minimal 2 backup teks untuk dibandingkan (snapshot fallback tidak dihitung)');
     setCmp({ device: deviceName, oldId: list[1].id, newId: list[0].id });
     await compareIds(list[1].id, list[0].id);
   }
@@ -105,14 +105,14 @@ export default function Backups() {
             <Field label="Versi lama" mb={false}>
               <select className={inputCls} value={cmp.oldId || ''} onChange={e => setCmp(c => ({ ...c, oldId: e.target.value }))}>
                 <option value="">—</option>
-                {(rows || []).filter(r => !cmp.device || r.deviceName === cmp.device)
+                {(rows || []).filter(r => (!cmp.device || r.deviceName === cmp.device) && !r.fallback)
                   .map(b => <option key={b.id} value={b.id}>{new Date(b.createdAt).toLocaleString('id-ID')}</option>)}
               </select>
             </Field>
             <Field label="Versi baru" mb={false}>
               <select className={inputCls} value={cmp.newId || ''} onChange={e => setCmp(c => ({ ...c, newId: e.target.value }))}>
                 <option value="">—</option>
-                {(rows || []).filter(r => (!cmp.device || r.deviceName === cmp.device) && r.id !== cmp.oldId)
+                {(rows || []).filter(r => (!cmp.device || r.deviceName === cmp.device) && r.id !== cmp.oldId && !r.fallback)
                   .map(b => <option key={b.id} value={b.id}>{new Date(b.createdAt).toLocaleString('id-ID')}</option>)}
               </select>
             </Field>

@@ -67,30 +67,54 @@ const VENDORS = {
      *   1) coba fallback SSH (host sama) untuk export teks;
      *   2) jika SSH gagal -> buat backup biner .backup langsung di perangkat via API.
      */
+    /**
+     * Backup untuk MikroTik mode API:
+     * 1) SSH port terbuka  -> /export hide-sensitive (teks paling akurat, timeout besar)
+     * 2) SSH tertutup/gagal -> snapshot konfigurasi via API (teks, tetap bisa di-diff)
+     */
+    /**
+     * Backup untuk MikroTik mode API:
+     * snapshot konfigurasi via API (teks terstruktur) — cepat, pasti, dan bisa di-diff.
+     * /export hide-sensitive via SSH sengaja tidak dipakai: di router BGP bisa >3 menit.
+     */
     async backup(device, password) {
-      const { withSession } = require('./base');
-      const to = (store.getDb().settings.sshTimeoutMs || 10000) + 60000;
-      if (String(device.transport || 'ssh').startsWith('api')) {
-        try {
-          return await withSession(
-            { ...device, transport: 'ssh', port: Number(device.port) || 22 },
-            password,
-            s => s.run(this.backupCommand()),
-            to
-          );
-        } catch (sshErr) {
-          const { RosApiSession } = require('./routeros-api');
-          const s = new RosApiSession(device, password, store.getDb().settings.sshTimeoutMs);
+      const { RosApiSession } = require('./routeros-api');
+      const db = store.getDb();
+      const s = new RosApiSession(device, password, db.settings.sshTimeoutMs);
+      try {
+        await s.connect();
+        const SECTIONS = [
+          ['/system/identity/print', 'Identity'],
+          ['/system/resource/print', 'Resource'],
+          ['/interface/print', 'Interfaces'],
+          ['/ip/address/print', 'IP Address'],
+          ['/ip/route/print', 'IP Route'],
+          ['/ip/firewall/filter/print', 'Firewall Filter'],
+          ['/ip/firewall/nat/print', 'Firewall NAT'],
+          ['/ip/firewall/address-list/print', 'Address List'],
+          ['/ip/dhcp-server/print', 'DHCP Server'],
+          ['/ip/dhcp-server/network/print', 'DHCP Network'],
+          ['/ip/pool/print', 'IP Pool'],
+          ['/ip/service/print', 'Service'],
+          ['/queue/simple/print', 'Simple Queue'],
+          ['/ppp/secret/print', 'PPP Secret'],
+          ['/ppp/profile/print', 'PPP Profile'],
+          ['/snmp/print', 'SNMP']
+        ];
+        let text = `# RouterOS API config snapshot\n# device: ${device.name} (${device.host})\n# waktu: ${new Date().toISOString()}\n\n`;
+        for (const [p, label] of SECTIONS) {
           try {
-            await s.connect();
-            const name = 'noc-auto-' + new Date().toISOString().slice(0, 10).replace(/-/g, '');
-            await s.api.sentence(['/system/backup/save', '=name=' + name, '=dont-encrypt=yes']);
-            await s.api.sentence(['/system/backup/save', '.proplist=']);
-            return `[API mode] SSH tidak dapat dijangkau (${sshErr.message}).\nBackup biner dibuat DI PERANGKAT sebagai "${name}.backup" — ambil via Winbox/Files/FTP.`;
-          } finally { s.close(); }
+            const { rows } = await s.api.sentence([p], { maxRows: 1500, ms: 8000 });
+            text += `# === ${label} (${rows.length}) ===\n`;
+            for (const r of rows) {
+              text += Object.entries(r).filter(([k]) => k !== '.id').map(([k, v]) => `${k}=${v}`).join(' ') + '\n';
+            }
+            text += '\n';
+          } catch { /* seksi dilewati bila tidak tersedia */ }
         }
-      }
-      return withSession(device, password, s => s.run(this.backupCommand()), to);
+        if (text.length < 200) throw new Error('snapshot API terlalu kecil — perangkat merespons aneh');
+        return { content: text, command: 'api-config-snapshot' };
+      } finally { s.close(); }
     }
   },
 

@@ -288,7 +288,7 @@ router.post('/devices/:id/backup', auth.authMiddleware, async (req, res) => {
 
 router.get('/backups', auth.authMiddleware, (req, res) => {
   const rows = store.getDb().backups
-    .map(({ content, ...r }) => ({ ...r, hasContent: true }))
+    .map(({ content, ...r }) => ({ ...r, hasContent: true, fallback: typeof content === 'string' && content.startsWith('[API mode]') }))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   res.json({ backups: rows });
 });

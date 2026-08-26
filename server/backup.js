@@ -14,14 +14,22 @@ const { getVendor, devicePassword } = require('./drivers/vendors');
 async function performBackup(device, username, opts = {}) {
   const db = store.getDb();
   const v = getVendor(device.vendor);
-  let content;
+  let content, command;
   if (typeof v.backup === 'function') {
-    content = await v.backup(device, devicePassword(device));
+    const r = await v.backup(device, devicePassword(device));
+    if (typeof r === 'object' && r !== null && r.content !== undefined) {
+      content = r.content;
+      command = r.command || v.backupCommand();
+    } else {
+      content = r;
+      command = v.backupCommand();
+    }
   } else {
     const { withSession } = require('./drivers/base');
     content = await withSession(device, devicePassword(device),
       s => s.run(v.backupCommand()),
       (db.settings.sshTimeoutMs || 10000) + 45000);
+    command = v.backupCommand();
   }
   if (!content || content.length < 10) throw new Error('Output backup kosong / terlalu pendek');
 
@@ -29,7 +37,7 @@ async function performBackup(device, username, opts = {}) {
     id: store.nextId('bkp'),
     deviceId: device.id,
     deviceName: device.name,
-    command: v.backupCommand(),
+    command,
     createdAt: new Date().toISOString(),
     sizeBytes: Buffer.byteLength(content),
     createdBy: username || (opts.auto ? 'auto-scheduler' : 'unknown'),
