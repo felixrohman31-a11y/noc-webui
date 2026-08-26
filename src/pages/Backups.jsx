@@ -43,10 +43,15 @@ export default function Backups() {
     if (!oldId || !newId || oldId === newId) return toast.push('info', 'Pilih dua versi yang berbeda');
     try {
       const [a, b] = await Promise.all([api.get(`/api/backups/${oldId}`), api.get(`/api/backups/${newId}`)]);
+      const ca = a.backup.content || '';
+      const cb = b.backup.content || '';
+      if (ca.startsWith('[API mode]') || cb.startsWith('[API mode]')) {
+        return toast.push('err', 'Salah satu snapshot adalah backup biner on-device (bukan teks config) — tidak bisa dibandingkan');
+      }
       setDiff({
         oldB: a.backup, newB: b.backup,
-        title: `${a.backup.deviceName}: ${new Date(a.backup.createdAt).toLocaleString('id-ID')}  →  ${new Date(b.backup.createdAt).toLocaleString('id-ID')}`,
-        text: lineDiff(a.backup.content, b.backup.content)
+        title: `${a.backup.deviceName}: ${new Date(a.backup.createdAt).toLocaleString('id-ID')}  →  ${new Date(b.createdAt).toLocaleString('id-ID')}`,
+        text: lineDiff(ca, cb)
       });
     } catch (e) { toast.push('err', e.message); }
   }
@@ -137,9 +142,10 @@ export default function Backups() {
               </div>
             ) : (
               <pre className="terminal-out bg-[#0b1220] border border-[#1e2a44] rounded-lg p-4 max-h-[65vh] overflow-auto text-xs">
-                {diff.text.split('\n').map((l, i) => (
+                {diff.text.split('\n').slice(0, 4000).map((l, i) => (
                   <div key={i} className={l.startsWith('+') ? 'text-emerald-400' : l.startsWith('-') ? 'text-red-400' : 'text-slate-300'}>{l}</div>
                 ))}
+                {diff.text.split('\n').length > 4000 && <div className="text-slate-500 mt-2">... {diff.text.split('\n').length - 4000} baris berikutnya dipotong tampilan (unduh untuk melihat lengkap)</div>}
               </pre>
             )}
           </>

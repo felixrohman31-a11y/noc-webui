@@ -132,9 +132,10 @@ class ShellSession {
     const start = this.cleanBuf.length;
     this.stream.write(cmd + '\n');
     const self = this;
+    // /export dsb. bisa makan waktu lama -> deadline per perintah mengikuti timeout sesi
     await this._wait(
       () => self.cleanBuf.length > start && self.cleanBuf.replace(/\s+$/, '').endsWith(self.prompt),
-      25000,
+      Math.max(this.timeoutMs + 20000, 30000),
       'menunggu hasil "' + cmd.slice(0, 40) + '"'
     );
     let out = this.cleanBuf.slice(start);
