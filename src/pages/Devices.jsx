@@ -7,7 +7,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
-import { Card, Button, Badge, StatusDot, Modal, Field, inputCls, Empty, Spinner, useToast, Checkbox } from '../components/ui';
+import { Card, Button, Badge, StatusDot, Modal, Field, inputCls, Empty, Spinner, useToast, Checkbox, SecretInput } from '../components/ui';
 import { getVendorMeta } from '../vendorMeta';
 import { Plus, Pencil, Trash2, RadioTower, Radar } from 'lucide-react';
 
