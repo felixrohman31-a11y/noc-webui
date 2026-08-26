@@ -189,21 +189,24 @@ export default function Devices() {
               <Field label="Port yang dicek (opsional)" hint="Kosong = fast scan: 22, 80, 443, 8728. Maks 6 port">
                 <input className={inputCls + ' font-mono'} value={disc.ports} onChange={e => setDisc(s => ({ ...s, ports: e.target.value }))} placeholder="22, 8728" />
               </Field>
-              <div className="flex items-end"><Button loading={disc.scanning}
-                onClick={async () => {
-                  setDisc(s => ({ ...s, scanning: true, results: null }));
-                  try {
-                    const ports = disc.ports.split(',').map(x => Number(x.trim())).filter(Boolean);
-                    const r = await api.post('/api/discover/scan', { cidr: disc.cidr, ...(ports.length ? { ports } : {}) });
-                    const cands = r.candidates.map(c => ({ ...c, os: c.bannerHint || '', hostName: '', model: '', detecting: false }));
-                    setDisc(s => ({ ...s, results: cands, scanning: false }));
-                    // auto deep-detect (maks 12 host baru) bila kredensial diisi
-                    if (disc.username && !document.hidden) {
-                      const targets = cands.filter(c => !c.exists).slice(0, 12);
-                      for (const t of targets) await detectRow(t.ip, t.port);
-                    }
-                  } catch (e) { toast.push('err', e.message); setDisc(s => ({ ...s, scanning: false })); }
-                }}><Radar size={14} /> Scan</Button></div>
+              <div className="flex flex-col justify-end">
+                <span aria-hidden="true" className="block text-xs mt-1 mb-3 opacity-0 select-none">spacer</span>
+                <Button loading={disc.scanning} className="w-full justify-center"
+                  onClick={async () => {
+                    setDisc(s => ({ ...s, scanning: true, results: null }));
+                    try {
+                      const ports = disc.ports.split(',').map(x => Number(x.trim())).filter(Boolean);
+                      const r = await api.post('/api/discover/scan', { cidr: disc.cidr, ...(ports.length ? { ports } : {}) });
+                      const cands = r.candidates.map(c => ({ ...c, os: c.bannerHint || '', hostName: '', model: '', detecting: false }));
+                      setDisc(s => ({ ...s, results: cands, scanning: false }));
+                      // auto deep-detect (maks 12 host baru) bila kredensial diisi
+                      if (disc.username && !document.hidden) {
+                        const targets = cands.filter(c => !c.exists).slice(0, 12);
+                        for (const t of targets) await detectRow(t.ip, t.port);
+                      }
+                    } catch (e) { toast.push('err', e.message); setDisc(s => ({ ...s, scanning: false })); }
+                  }}><Radar size={14} /> Scan</Button>
+              </div>
             </div>
 
             <div className="grid md:grid-cols-2 gap-x-4 mt-2 mb-3">
