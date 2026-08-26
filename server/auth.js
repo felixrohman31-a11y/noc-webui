@@ -124,10 +124,16 @@ function requireAdmin(req, res, next) {
   next();
 }
 
+const DUMMY_HASH = bcrypt.hashSync('noc-timing-equalizer', 10);
+
 function authenticate(username, password) {
   const db = store.getDb();
   const user = db.users.find(u => u.username === username);
-  if (!user) return null;
+  if (!user) {
+    // bandingkan tetap dengan hash dummy agar waktu respons seragam (anti user-enumeration)
+    bcrypt.compareSync(String(password || ''), DUMMY_HASH);
+    return null;
+  }
   if (!bcrypt.compareSync(password, user.passwordHash)) return null;
   return user;
 }

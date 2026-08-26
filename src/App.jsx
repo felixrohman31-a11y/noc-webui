@@ -26,7 +26,7 @@ import { LayoutDashboard, Server, Archive, TerminalSquare, ScrollText, Settings,
 import { Modal, Button } from './components/ui';
 
 const BNB_ADDRESS = '0x4649b364523D4DdC329583E218f20d52b2997367';
-const APP_VERSION = 'v0.1.0';
+const APP_VERSION = 'v1.0.2';
 
 
 import { Users as UsersIcon } from 'lucide-react';

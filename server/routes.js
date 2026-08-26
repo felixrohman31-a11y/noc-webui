@@ -13,6 +13,18 @@ const { broadcast, pollOnce } = require('./scheduler');
 
 const router = express.Router();
 
+// ---- rate limiter ringan utk endpoint mahal ----
+const rlMap = new Map();
+function rateLimit(key, max, windowMs) {
+  const now = Date.now();
+  const arr = (rlMap.get(key) || []).filter(t => now - t < windowMs);
+  if (arr.length >= max) return false;
+  arr.push(now);
+  rlMap.set(key, arr);
+  return true;
+}
+function tooMany(res) { return res.status(429).json({ error: 'Terlalu banyak permintaan — coba lagi nanti' }); }
+
 function sanitizeDevice(d) {
   const { passwordEnc, ...rest } = d;
   return rest;
@@ -192,6 +204,7 @@ router.get('/devices/:id/interfaces', auth.authMiddleware, async (req, res) => {
 
 // Deteksi fakta one-off utk form (belum perlu device tersimpan)
 router.post('/devices/detect', auth.authMiddleware, async (req, res) => {
+  if (!rateLimit('det:' + req.ip, 10, 60000)) return tooMany(res);
   const b = req.body || {};
   if (!b.host || !b.vendor) return res.status(400).json({ error: 'host & vendor wajib' });
   const v = getVendor(b.vendor);
@@ -247,6 +260,7 @@ router.post('/devices/:id/command', auth.authMiddleware, async (req, res) => {
   if (DESTRUCTIVE_RE.test(cmd)) {
     return res.status(400).json({ error: 'Perintah destruktif diblokir dari panel ini' });
   }
+  if (!rateLimit('cmd:' + req.ip, 60, 60000)) return tooMany(res);
   try {
     const out = await withSession(d, devicePassword(d), async s => await s.run(cmd), store.getDb().settings.sshTimeoutMs + 15000);
     store.audit('command.run', `${d.name}: ${cmd}`, req.user.username);
@@ -292,6 +306,8 @@ router.post('/bulk/run', auth.authMiddleware, async (req, res) => {
   const { deviceIds = [], command } = req.body || {};
   const cmd = String(command || '').trim();
   if (!cmd) return res.status(400).json({ error: 'command kosong' });
+  if (DESTRUCTIVE_RE.test(cmd)) return res.status(400).json({ error: 'Perintah destruktif diblokir dari panel ini' });
+  if (!rateLimit('bulk:' + req.ip, 10, 60000)) return tooMany(res);
   const devices = deviceIds.map(findDevice).filter(Boolean);
   if (!devices.length) return res.status(400).json({ error: 'tidak ada device dipilih' });
 
@@ -395,7 +411,13 @@ router.get('/audit', auth.authMiddleware, (req, res) => {
 });
 
 router.get('/settings', auth.authMiddleware, (req, res) => {
-  res.json({ settings: store.getDb().settings });
+  const s = { ...store.getDb().settings };
+  if (req.user.role !== 'admin') {
+    // sembunyikan kredensial integrasi dari non-admin
+    s.telegramBotToken = s.telegramBotToken ? '<tersimpan>' : '';
+    s.apiKeys = undefined;
+  }
+  res.json({ settings: s });
 });
 
 router.put('/settings', auth.authMiddleware, auth.requireAdmin, (req, res) => {
@@ -498,6 +520,7 @@ function sniffBanner(host, port, timeoutMs) {
 }
 
 router.post('/discover/scan', auth.authMiddleware, async (req, res) => {
+  if (!rateLimit('scan:' + req.ip, 5, 60000)) return tooMany(res);
   try {
     const { cidr } = req.body || {};
     const ports = ((req.body && req.body.ports) || [22]).map(Number).filter(p => p >= 1 && p <= 65535).slice(0, 4);
@@ -801,6 +824,16 @@ router.post('/devices/:id/ros/action', auth.authMiddleware, async (req, res) => 
     const ids = Array.isArray(req.body.ids) ? req.body.ids.map(String) : [];
     const params = req.body.params || {};
     const caps = m.caps || {};
+
+    // validasi ketat format .id (cegah injeksi kata API lewat field id)
+    if (ids.length && ids.some(x => !/^[A-Za-z0-9*._\-]{1,64}$/.test(x))) {
+      return res.status(400).json({ error: 'format id tidak valid' });
+    }
+    for (const [pk, pv] of Object.entries(params)) {
+      if (typeof pv === 'string' && /[\r\n]/.test(pv)) {
+        return res.status(400).json({ error: `field "${pk}" mengandung karakter tidak valid` });
+      }
+    }
 
     let sentences = [];
     let desc = '';
