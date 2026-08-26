@@ -482,6 +482,38 @@ router.get('/devices/:id/cli/run', auth.authMiddleware, async (req, res) => {
 });
 
 // ---------- DISCOVERY ----------
+const DEFAULT_SCAN_PORTS = [22, 80, 443, 8728]; // fast scan bila port tidak diisi
+
+/** Fingerprint HTTP utk port web: baca header Server + potongan body */
+function httpProbe(host, port, tlsFlag) {
+  return new Promise(resolve => {
+    const mod = require(tlsFlag ? 'https' : 'http');
+    let done = false, server = '', body = '';
+    const finish = () => {
+      if (done) return; done = true;
+      const t = server + ' ' + body;
+      let vendor = null, os = '';
+      if (/fortigate|fortinet/i.test(t)) { vendor = 'fortinet'; os = 'FortiOS Web'; }
+      else if (/sangfor/i.test(t)) { vendor = 'sangfor'; os = 'Sangfor NGAF Web'; }
+      else if (/mikrotik|routeros|webfig/i.test(t)) { vendor = 'mikrotik'; os = 'RouterOS Web'; }
+      else if (/aruba|\bhpe\b|procurve/i.test(t)) { vendor = 'aruba'; os = 'Aruba Web'; }
+      else if (/huawei/i.test(t)) { vendor = 'huawei'; os = 'Huawei Web'; }
+      else if (server) os = 'web (' + server.slice(0, 28) + ')';
+      resolve({ vendor, os });
+    };
+    try {
+      const req = mod.get({ host, port: Number(port), path: '/', rejectUnauthorized: false, timeout: 1500 }, res => {
+        server = res.headers.server || '';
+        res.on('data', d => { body += d.toString('binary'); if (body.length > 2048) { try { req.destroy(); } catch {} finish(); } });
+        res.on('end', finish);
+        res.on('error', finish);
+      });
+      req.setTimeout(1800, () => { try { req.destroy(); } catch {} finish(); });
+      req.on('error', finish);
+    } catch { finish(); }
+  });
+}
+
 function cidrHosts(cidr) {
   const bad = () => Object.assign(new Error('Format CIDR tidak valid (contoh 192.168.1.0/24, maks /22)'), { status: 400 });
   const [base, bitsRaw] = String(cidr || '').trim().split('/');
@@ -504,6 +536,24 @@ function cidrHosts(cidr) {
   return hosts;
 }
 
+// fingerprint vendor dari banner SSH
+const BANNER_MAP = [
+  [/rosssh/i, 'mikrotik', 'MikroTik RouterOS'],
+  [/cisco/i, 'cisco', 'Cisco IOS/IOS-XE'],
+  [/forti/i, 'fortinet', 'Fortinet FortiOS'],
+  [/huawei|vrp/i, 'huawei', 'Huawei VRP'],
+  [/junos/i, 'juniper', 'Juniper Junos'],
+  [/aruba/i, 'aruba', 'Aruba'],
+  [/dropbear/i, 'generic', 'Dropbear SSH'],
+  [/openssh/i, 'generic', 'OpenSSH (Linux/umum)']
+];
+function matchBanner(banner) {
+  for (const [re, vendor, label] of BANNER_MAP) {
+    if (re.test(banner)) return { vendor, os: label };
+  }
+  return { vendor: 'generic', os: '' };
+}
+
 function sniffBanner(host, port, timeoutMs) {
   const net = require('net');
   return new Promise(resolve => {
@@ -512,18 +562,94 @@ function sniffBanner(host, port, timeoutMs) {
     let buf = '';
     const finish = r => { if (!done) { done = true; try { sock.destroy(); } catch {} resolve(r); } };
     sock.setTimeout(timeoutMs);
-    sock.on('connect', () => { /* tunggu banner */ });
-    sock.on('data', d => { buf += d.toString('binary'); if (buf.length > 128 || buf.includes('\n')) finish(buf); });
-    sock.on('timeout', () => finish(''));
+    sock.on('data', d => { buf += d.toString('binary'); if (buf.length > 200 || buf.includes('\n')) finish(buf); });
+    sock.on('timeout', () => finish(buf));
     sock.on('error', () => finish(''));
   });
 }
+
+/** Deteksi OS/firmware universal: coba beberapa perintah khas vendor, kenali dari responsnya */
+async function universalProbe(session) {
+  const CMD_TRIES = ['/system resource print', 'show version', 'display version', 'get system status'];
+  for (const cmd of CMD_TRIES) {
+    let out = '';
+    try { out = await session.run(cmd); } catch { continue; }
+    const firstLine = (out.split('\n')[0] || '');
+    if (!out || out.length < 6 || /(invalid|incomplete|unknown|bad command|% |no such)/i.test(firstLine)) continue;
+    let vendor = 'generic';
+    if (/RouterOS|board-name/i.test(out)) vendor = 'mikrotik';
+    else if (/JUNOS/i.test(out)) vendor = 'juniper';
+    else if (/FortiOS|FortiGate/i.test(out)) vendor = 'fortinet';
+    else if (/Huawei|VRP/i.test(out)) vendor = 'huawei';
+    else if (/Ruijie|RGOS/i.test(out)) vendor = 'ruijie';
+    else if (/Cisco IOS/i.test(out)) vendor = 'cisco';
+    const version = (out.match(/version[:\s]+([^\r\n]+)/i) || [])[1];
+    const model = (out.match(/board-name:\s*(\S+)|Model:\s*(\S+)|^\s*\S*\s*(?:FortiGate-\S+)/im) || [])[1]
+      || (out.match(/Model:\s*(\S+)/i) || [])[1] || '';
+    return { vendor, version: (version || '').trim().slice(0, 60), model: (model || '').trim(), raw: out.slice(0, 400) };
+  }
+  return null;
+}
+
+function promptToHostname(prompt) {
+  const last = String(prompt || '').replace(/\r/g, '').trimEnd().split('\n').pop().trim();
+  const bracket = last.match(/\[([^\]]+)\]/);
+  let name = bracket ? bracket[1] : last.replace(/[>#$\]]+\s*$/, '').trim();
+  name = name.replace(/^[\w.\-]+@/, ''); // buang user@
+  return (name || '').slice(0, 64);
+}
+
+// Deteksi OS/firmware satu host (dipakai tombol Deteksi di modal Discovery)
+router.post('/discover/facts', auth.authMiddleware, async (req, res) => {
+  if (!rateLimit('dfact:' + req.ip, 15, 60000)) return tooMany(res);
+  try {
+    const b = req.body || {};
+    if (!b.host) return res.status(400).json({ error: 'host wajib' });
+    const username = b.username || '';
+    const password = b.password || '';
+    if (!username) return res.status(400).json({ error: 'isi username/password kredensial di form' });
+
+    if (b.transport === 'api') {
+      const dev = { name: 'detect', host: b.host, vendor: 'mikrotik', transport: 'api', apiPort: Number(b.apiPort) || 8728, username };
+      const v = getVendor('mikrotik');
+      const facts = await withSession(dev, password, s2 => v.facts(s2), (store.getDb().settings.sshTimeoutMs || 10000) + 8000);
+      return res.json({
+        source: 'api',
+        vendor: 'mikrotik',
+        hostname: facts.hostname,
+        os: 'RouterOS ' + (facts.version || ''),
+        version: facts.version || '',
+        model: facts.boardName || ''
+      });
+    }
+
+    // SSH universal probe
+    const dev = { name: 'detect', host: b.host, port: Number(b.sshPort) || 22, vendor: 'generic', username, pagerOff: '' };
+    const out = await withSession(dev, password, async s => {
+      const probe = await universalProbe(s);
+      return { probe, hostname: promptToHostname(s.prompt) };
+    }, (store.getDb().settings.sshTimeoutMs || 10000) + 15000);
+    const p = out.probe;
+    res.json({
+      source: 'ssh',
+      vendor: p ? p.vendor : 'generic',
+      hostname: out.hostname,
+      os: p ? (({ mikrotik: 'RouterOS', juniper: 'Junos', fortinet: 'FortiOS', huawei: 'VRP', ruijie: 'RGOS', cisco: 'IOS/IOS-XE' })[p.vendor] || '') + (p.version ? ' ' + p.version : '') : '',
+      version: p ? p.version : '',
+      model: p ? p.model : ''
+    });
+  } catch (e) { res.status(502).json({ error: e.message }); }
+});
 
 router.post('/discover/scan', auth.authMiddleware, async (req, res) => {
   if (!rateLimit('scan:' + req.ip, 5, 60000)) return tooMany(res);
   try {
     const { cidr } = req.body || {};
-    const ports = ((req.body && req.body.ports) || [22]).map(Number).filter(p => p >= 1 && p <= 65535).slice(0, 4);
+    const rawPorts = (req.body && req.body.ports) || [];
+    // port opsional: kosong = fast scan ke port manajemen umum
+    const ports = Array.isArray(rawPorts) && rawPorts.length
+      ? [...new Set(rawPorts.map(Number).filter(p => p >= 1 && p <= 65535))].slice(0, 6)
+      : DEFAULT_SCAN_PORTS;
     const hosts = cidrHosts(cidr);
     const found = [];
     let i = 0;
@@ -533,17 +659,29 @@ router.post('/discover/scan', auth.authMiddleware, async (req, res) => {
         const ip = hosts[i++];
         for (const p of ports) {
           const r = await tcpProbe(ip, p, 700);
-          if (r.online) found.push({ ip, port: p });
+          if (!r.online) continue;
+          const entry = { ip, port: p };
+          found.push(entry);
+          if (p === 80 || p === 443) {
+            const w = await httpProbe(ip, p, p === 443);
+            if (w.os) entry.bannerHint = w.os;
+            if (w.vendor) entry.guessVendor = w.vendor;
+          }
         }
       }
     }
-    await Promise.all(Array.from({ length: Math.min(CONC, hosts.length * Math.max(1, ports.length)) }, worker));
+    await Promise.all(Array.from({ length: Math.min(CONC, Math.max(1, hosts.length * ports.length)) }, worker));
     // fingerprint banner utk port SSH
     await Promise.all(found.filter(f => f.port === 22).map(async f => {
-      const b = await sniffBanner(f.ip, 22, 1200);
-      f.bannerHint = /ROSSSH/i.test(b) ? 'MikroTik RouterOS' : b ? 'SSH: ' + b.trim().slice(0, 40) : '';
-      f.guessVendor = /ROSSSH/i.test(b) ? 'mikrotik' : 'generic';
+      const b = await sniffBanner(f.ip, 22, 1500);
+      const m = matchBanner(b);
+      f.bannerHint = b ? m.os || b.trim().slice(0, 40) : '';
+      f.guessVendor = m.vendor;
     }));
+    found.filter(f => f.port === 8728 && !f.guessVendor || f.port === 8728).forEach(f => {
+      if (!f.bannerHint) f.bannerHint = 'RouterOS API';
+      f.guessVendor = 'mikrotik';
+    });
     const db = store.getDb();
     for (const f of found) f.exists = db.devices.some(d => d.host === f.ip && Number(d.port) === Number(f.port));
     store.audit('discover.scan', `${cidr} -> ${found.length} host terbuka`, req.user.username, req.ip);
@@ -565,10 +703,11 @@ router.post('/discover/add', auth.authMiddleware, (req, res) => {
         host: it.ip,
         port: Number(it.port) || 22,
         vendor: it.vendor || 'generic',
-        model: '', location: '', tags: ['discovered'],
+        model: it.model || '',
+        location: '', tags: ['discovered'],
         username: username || '', passwordEnc: require('./crypto').encrypt(password || ''),
         pagerOff: '', transport: it.vendor === 'mikrotik' ? 'ssh' : 'ssh',
-        enabled: true, notes: 'hasil discovery ' + new Date().toISOString().slice(0, 10),
+        enabled: true, notes: (it.os ? 'OS terdeteksi: ' + it.os + '. ' : '') + 'hasil discovery ' + new Date().toISOString().slice(0, 10),
         status: { online: null, latencyMs: null, lastChecked: null },
         createdAt: new Date().toISOString()
       };

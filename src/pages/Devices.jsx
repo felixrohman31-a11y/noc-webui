@@ -7,7 +7,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
-import { Card, Button, Badge, StatusDot, Modal, Field, inputCls, Empty, Spinner, useToast } from '../components/ui';
+import { Card, Button, Badge, StatusDot, Modal, Field, inputCls, Empty, Spinner, useToast, Checkbox } from '../components/ui';
 import { getVendorMeta } from '../vendorMeta';
 import { Plus, Pencil, Trash2, RadioTower, Radar } from 'lucide-react';
 
@@ -52,6 +52,28 @@ export default function Devices() {
       setDetect({ busy: false, msg: `✔ ${f.hostname || '?'} · ${f.version || 'versi ?'}${model ? ' · ' + model : ''}` });
     } catch (e) {
       setDetect({ busy: false, msg: '✖ ' + e.message });
+    }
+  }
+
+  // deteksi OS/firmware satu baris hasil discovery (pakai kredensial di form)
+  async function detectRow(ip, port) {
+    let result = null;
+    setDisc(s => ({ ...s, results: s.results.map(c => c.ip === ip && c.port === port ? { ...c, detecting: true } : c) }));
+    try {
+      result = await api.post('/api/discover/facts', {
+        host: ip, sshPort: port === 8728 ? undefined : port,
+        transport: port === 8728 ? 'api' : 'ssh',
+        apiPort: port === 8728 ? port : undefined,
+        username: disc.username, password: disc.password
+      });
+      setDisc(s => ({
+        ...s,
+        results: s.results.map(c => c.ip === ip && c.port === port
+          ? { ...c, os: result.os, hostName: result.hostname, model: result.model, vendor: c.port === 8728 ? 'mikrotik' : (result.vendor || c.guessVendor), detecting: false }
+          : c)
+      }));
+    } catch (e) {
+      setDisc(s => ({ ...s, results: s.results.map(c => c.ip === ip && c.port === port ? { ...c, os: '✖ ' + e.message.slice(0, 60), detecting: false } : c) }));
     }
   }
 
@@ -117,8 +139,7 @@ export default function Devices() {
           <input className={inputCls + ' w-64'} placeholder="Cari nama / host / tag..." value={filter} onChange={e => setFilter(e.target.value)} />
           <Button variant="ghost" onClick={() => setDisc({ cidr: '', ports: '22,8728', scanning: false, results: null, username: '', password: '' })}>
             <Radar size={14} /> Discovery
-          </Button>
-          <Button onClick={openAdd}><Plus size={15} /> Tambah Perangkat</Button>
+          </Button>          <Button onClick={openAdd}><Plus size={15} /> Tambah Perangkat</Button>
         </div>
       </div>
 
@@ -158,42 +179,69 @@ export default function Devices() {
         )}
       </Card>
 
-      <Modal open={!!disc} onClose={() => setDisc(null)} title="Discovery — Scan Subnet" wide>
+      <Modal open={!!disc} onClose={() => setDisc(null)} title="Discovery — Scan Subnet + Deteksi OS/Firmware" wide>
         {disc && (
           <>
             <div className="grid md:grid-cols-3 gap-x-4">
               <Field label="Subnet (CIDR)" hint="Maksimal /22. Contoh: 10.9.0.0/24">
                 <input className={inputCls + ' font-mono'} value={disc.cidr} onChange={e => setDisc(s => ({ ...s, cidr: e.target.value }))} placeholder="192.168.1.0/24" />
               </Field>
-              <Field label="Port yang dicek" hint="Pisah koma, maks 4">
-                <input className={inputCls + ' font-mono'} value={disc.ports} onChange={e => setDisc(s => ({ ...s, ports: e.target.value }))} />
+              <Field label="Port yang dicek (opsional)" hint="Kosong = fast scan: 22, 80, 443, 8728. Maks 6 port">
+                <input className={inputCls + ' font-mono'} value={disc.ports} onChange={e => setDisc(s => ({ ...s, ports: e.target.value }))} placeholder="22, 8728" />
               </Field>
               <div className="flex items-end"><Button loading={disc.scanning}
                 onClick={async () => {
                   setDisc(s => ({ ...s, scanning: true, results: null }));
                   try {
-                    const r = await api.post('/api/discover/scan', { cidr: disc.cidr, ports: disc.ports.split(',').map(x => Number(x.trim())).filter(Boolean) });
-                    setDisc(s => ({ ...s, results: r.candidates, scanning: false }));
+                    const ports = disc.ports.split(',').map(x => Number(x.trim())).filter(Boolean);
+                    const r = await api.post('/api/discover/scan', { cidr: disc.cidr, ...(ports.length ? { ports } : {}) });
+                    const cands = r.candidates.map(c => ({ ...c, os: c.bannerHint || '', hostName: '', model: '', detecting: false }));
+                    setDisc(s => ({ ...s, results: cands, scanning: false }));
+                    // auto deep-detect (maks 12 host baru) bila kredensial diisi
+                    if (disc.username && !document.hidden) {
+                      const targets = cands.filter(c => !c.exists).slice(0, 12);
+                      for (const t of targets) await detectRow(t.ip, t.port);
+                    }
                   } catch (e) { toast.push('err', e.message); setDisc(s => ({ ...s, scanning: false })); }
                 }}><Radar size={14} /> Scan</Button></div>
             </div>
 
+            <div className="grid md:grid-cols-2 gap-x-4 mt-2 mb-3">
+              <Field label="Username kredensial" hint="Untuk deteksi OS/firmware otomatis (opsional tapi disarankan)">
+                <input className={inputCls} value={disc.username} onChange={e => setDisc(s => ({ ...s, username: e.target.value }))} placeholder="admin" autoComplete="off" />
+              </Field>
+              <Field label="Password"><input type="password" className={inputCls} value={disc.password} onChange={e => setDisc(s => ({ ...s, password: e.target.value }))} autoComplete="new-password" /></Field>
+            </div>
+
             {disc.results && (
               <>
-                <table className="w-full text-sm my-3">
-                  <thead><tr className="text-left text-xs text-slate-500 uppercase tracking-wider">
-                    <th className="pb-2 w-8"></th><th className="pb-2">IP</th><th className="pb-2">Port</th><th className="pb-2">Hint</th><th className="pb-2">Status</th>
+                <table className="w-full text-xs my-2">
+                  <thead><tr className="text-left text-slate-500 uppercase tracking-wider">
+                    <th className="pb-2 w-8"></th><th className="pb-2">IP</th><th className="pb-2">Port</th><th className="pb-2">Vendor</th><th className="pb-2">OS / Firmware</th><th className="pb-2">Hostname</th><th className="pb-2">Status</th><th className="pb-2"></th>
                   </tr></thead>
                   <tbody>
                     {disc.results.map((c, i) => (
                       <tr key={i} className={`border-t border-[#1e2a44]/60 ${c.exists ? 'opacity-40' : ''}`}>
-                        <td className="py-2"><input type="checkbox" className="accent-cyan-500" disabled={c.exists}
+                        <td className="py-2"><Checkbox size={14} disabled={c.exists}
                           checked={!c.exists && (disc.picked?.[i] ?? true)}
-                          onChange={e => setDisc(s => ({ ...s, picked: { ...(s.picked || {}), [i]: e.target.checked } }))} /></td>
+                          onChange={v => setDisc(s => ({ ...s, picked: { ...(s.picked || {}), [i]: v } }))} /></td>
                         <td className="py-2 font-mono">{c.ip}</td>
                         <td className="py-2 font-mono">{c.port}</td>
-                        <td className="py-2 text-xs text-slate-400">{c.bannerHint || '-'}{c.guessVendor === 'mikrotik' ? ' 🎯' : ''}</td>
+                        <td className="py-2">
+                          <select className="bg-[#0b1220] border border-[#1e2a44] rounded px-1 py-0.5 text-[11px] text-slate-200"
+                            value={c.guessVendor}
+                            onChange={e => setDisc(s => ({ ...s, results: s.results.map((x, j) => j === i ? { ...x, guessVendor: e.target.value } : x) }))}>
+                            {['mikrotik','cisco','ruijie','aruba','huawei','juniper','fortinet','sangfor','generic'].map(v => <option key={v} value={v}>{v}</option>)}
+                          </select>
+                        </td>
+                        <td className="py-2 max-w-[180px] truncate text-slate-300" title={c.os}>{c.detecting ? '⟳ mendeteksi...' : (c.os || '-')}</td>
+                        <td className="py-2 text-cyan-300 max-w-[120px] truncate">{c.hostName || '-'}</td>
                         <td className="py-2 text-xs">{c.exists ? <Badge color="slate">sudah ada</Badge> : <Badge color="green">baru</Badge>}</td>
+                        <td className="py-2 text-right">
+                          {!c.exists && (
+                            <Button variant="ghost" loading={c.detecting} onClick={() => detectRow(c.ip, c.port)}>Deteksi</Button>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -202,12 +250,6 @@ export default function Devices() {
               </>
             )}
 
-            <div className="grid md:grid-cols-2 gap-x-4 mt-2">
-              <Field label="Kredensial untuk device baru (opsional)" hint="Username/password dipakai semua device hasil tambah">
-                <input className={inputCls} value={disc.username} onChange={e => setDisc(s => ({ ...s, username: e.target.value }))} placeholder="admin" />
-              </Field>
-              <Field label="Password"><input type="password" className={inputCls} value={disc.password} onChange={e => setDisc(s => ({ ...s, password: e.target.value }))} /></Field>
-            </div>
             <div className="flex justify-end gap-2 mt-3">
               <Button variant="ghost" onClick={() => setDisc(null)}>Tutup</Button>
               <Button disabled={!disc.results || disc.scanning}
@@ -215,10 +257,17 @@ export default function Devices() {
                   const items = disc.results
                     .map((c, i) => ({ c, sel: c.exists ? false : (disc.picked ? disc.picked[i] !== false : true) }))
                     .filter(x => x.sel)
-                    .map(x => ({ ip: x.c.ip, port: x.c.port, vendor: x.c.guessVendor === 'mikrotik' ? 'mikrotik' : 'generic' }));
+                    .map(x => ({
+                      ip: x.c.ip, port: x.c.port, vendor: x.c.guessVendor,
+                      name: x.c.hostName || x.c.ip,
+                      model: x.c.model || '', os: x.c.os || ''
+                    }));
                   if (!items.length) return toast.push('info', 'Tidak ada host dipilih');
                   try {
-                    const r = await api.post('/api/discover/add', { items, username: disc.username, password: disc.password });
+                    const r = await api.post('/api/discover/add', {
+                      items,
+                      username: disc.username, password: disc.password
+                    });
                     toast.push('ok', `${r.added.length} perangkat ditambahkan`);
                     setDisc(null); await load();
                   } catch (e) { toast.push('err', e.message); }
