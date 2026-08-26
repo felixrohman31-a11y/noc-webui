@@ -7,7 +7,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../api';
-import { Card, Button, Badge, Spinner, Modal, Field, inputCls, Empty, useToast } from '../components/ui';
+import { Card, Button, Badge, Spinner, Modal, Field, inputCls, Empty, useToast, Checkbox, SelectedChip } from '../components/ui';
 import { ArrowLeft, RefreshCw, Plus, Pencil, Trash2, FolderTree, AlertTriangle } from 'lucide-react';
 
 const GROUP_ORDER = ['', 'IP', 'Firewall', 'Queue', 'PPP', 'System'];
@@ -150,6 +150,8 @@ export default function Winbox() {
   const selectedIds = Object.keys(sel).filter(k => sel[k]);
   const caps = cur?.caps || {};
 
+  function toggleSel(rid) { setSel(s => ({ ...s, [rid]: !s[rid] })); }
+
   return (
     <div className="max-w-7xl mx-auto space-y-4">
       <div className="flex items-center gap-3 flex-wrap">
@@ -217,6 +219,10 @@ export default function Winbox() {
                   <Trash2 size={13} /> Remove
                 </Button>
               )}
+              <SelectedChip count={selectedIds.length} onClear={() => setSel({})} label="dipilih" />
+              {cur?.readonly && !caps.remove && (
+                <span className="text-xs text-slate-600">{rows ? rows.length + ' entry' : ''}</span>
+              )}
               <input className={inputCls + ' ml-auto w-56'} placeholder="Filter..." value={q} onChange={e => setQ(e.target.value)} />
             </div>
 
@@ -233,11 +239,11 @@ export default function Winbox() {
                     <table className="w-full text-xs">
                       <thead className="sticky top-0 bg-[#111a2c]">
                         <tr className="text-left text-slate-500 uppercase tracking-wider">
-                          <th className="px-2 py-2 w-8"><input type="checkbox" className="accent-cyan-500"
+                          <th className="px-2 py-2 w-8"><Checkbox size={15}
                             checked={filtered.length > 0 && filtered.every(r => sel[r['.id']])}
-                            onChange={e => {
-                              const v = {}; filtered.forEach(r => v[r['.id']] = e.target.checked); setSel(s => ({ ...s, ...v }));
-                            }} /></th>
+                            onChange={v => {
+                              const v2 = {}; filtered.forEach(r => v2[r['.id']] = v); setSel(s => ({ ...s, ...v2 }));
+                            }} title="Pilih semua" /></th>
                           <th className="px-2 py-2 w-10">Flag</th>
                           {(cur?.cols || []).map(c => <th key={c} className="px-2 py-2">{pretty(c)}</th>)}
                           <th className="px-2 py-2">Comment</th>
@@ -249,8 +255,8 @@ export default function Winbox() {
                           const dis = r.disabled === 'true';
                           return (
                             <tr key={r['.id'] || i} className={`border-t border-[#1e2a44]/60 hover:bg-slate-700/20 ${dis ? 'opacity-50 italic' : ''}`}>
-                              <td className="px-2 py-1.5"><input type="checkbox" className="accent-cyan-500"
-                                checked={!!sel[r['.id']]} onChange={() => setSel(s => ({ ...s, [r['.id']]: !s[r['.id']] }))} /></td>
+                              <td className="px-2 py-1.5"><Checkbox size={15}
+                                checked={!!sel[r['.id']]} onChange={() => toggleSel(r['.id'])} /></td>
                               <td className="px-2 py-1.5 font-mono text-cyan-400">{flagLetters(r)}</td>
                               {(cur?.cols || []).map(c => (
                                 <td key={c} className={`px-2 py-1.5 font-mono ${r[c] === 'true' ? 'text-emerald-400' : r[c] === 'false' ? 'text-slate-500' : 'text-slate-200'} max-w-[220px] truncate`} title={String(r[c] ?? '')}>

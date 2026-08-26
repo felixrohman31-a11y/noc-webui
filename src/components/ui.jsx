@@ -123,6 +123,41 @@ export function Empty({ children }) {
   return <div className="text-center text-slate-500 text-sm py-8">{children}</div>;
 }
 
+/** Checkbox custom bergaya NOC: kotak rounded, glow cyan saat aktif */
+export function Checkbox({ checked, onChange, size = 16, title }) {
+  return (
+    <button type="button" role="checkbox" aria-checked={!!checked} title={title}
+      onClick={e => { e.stopPropagation(); onChange && onChange(!checked); }}
+      className={`relative inline-flex items-center justify-center shrink-0 rounded-[5px] border transition-all duration-150
+        ${checked
+          ? 'bg-gradient-to-br from-cyan-400 to-cyan-600 border-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.5)]'
+          : 'bg-[#0b1220] border-slate-600 hover:border-cyan-400/70 hover:shadow-[0_0_6px_rgba(34,211,238,0.25)]'}`}
+      style={{ width: size, height: size }}>
+      <svg viewBox="0 0 12 10" className={`w-2.5 transition-all duration-150 ${checked ? 'opacity-100 scale-100 text-slate-950' : 'opacity-0 scale-50'}`} fill="none"
+        style={{ width: size * 0.7, height: size * 0.6 }}>
+        <path d="M1 5.5 L4.5 9 L11 1" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </button>
+  );
+}
+
+/** Chip indikator jumlah baris terpilih + tombol bersihkan */
+export function SelectedChip({ count, onClear, label = 'dipilih' }) {
+  if (!count) return null;
+  return (
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-cyan-500/15 border border-cyan-500/40 text-xs font-medium text-cyan-300 shadow-[0_0_10px_rgba(34,211,238,0.15)]">
+      <svg viewBox="0 0 12 10" className="w-2.5 h-2.5" fill="none">
+        <path d="M1 5.5 L4.5 9 L11 1" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      {count} {label}
+      {onClear && (
+        <button onClick={onClear} title="Kosongkan pilihan"
+          className="ml-0.5 -mr-0.5 w-4 h-4 rounded-full flex items-center justify-center text-cyan-400/70 hover:text-white hover:bg-cyan-500/30 transition-colors leading-none">×</button>
+      )}
+    </span>
+  );
+}
+
 export function Sparkline({ points, width = 90, height = 22 }) {
   const data = (points || []).filter(p => p && p[1] != null);
   if (!data.length) return <span className="text-slate-600 text-[10px]">no data</span>;
