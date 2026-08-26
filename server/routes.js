@@ -699,20 +699,48 @@ router.post('/discover/add', auth.authMiddleware, (req, res) => {
     const { items = [], username = '', password = '' } = req.body || {};
     if (!Array.isArray(items) || !items.length) return res.status(400).json({ error: 'items kosong' });
     const db = store.getDb();
-    const added = [];
+
+    // gabungkan baris dengan IP sama: port 8728 -> apiPort, lainnya -> sshPort
+    const mergedMap = new Map();
     for (const it of items.slice(0, 50)) {
-      if (!it.ip || db.devices.some(x => x.host === it.ip && Number(x.port) === Number(it.port || 22))) continue;
+      if (!it.ip) continue;
+      const cur = mergedMap.get(it.ip) || {
+        ip: it.ip, vendor: it.vendor || 'generic',
+        name: it.name || ('discovered-' + it.ip),
+        model: it.model || '', os: it.os || '',
+        sshPort: null, apiPort: null, transport: 'ssh'
+      };
+      if (it.name) cur.name = it.name;
+      if (it.model) cur.model = it.model;
+      if (it.os) cur.os = it.os;
+      if (it.vendor === 'mikrotik') cur.vendor = 'mikrotik';
+      if (Number(it.apiPort)) {
+        cur.apiPort = Number(it.apiPort);
+        if (String(it.transport).startsWith('api')) cur.transport = it.transport;
+      } else {
+        cur.sshPort = Number(it.sshPort) || Number(it.port) || 22;
+        if (!cur.apiPort) cur.transport = 'ssh';
+      }
+      mergedMap.set(it.ip, cur);
+    }
+
+    const added = [];
+    for (const x of mergedMap.values()) {
+      if (db.devices.some(d => d.host === x.ip && Number(d.port) === Number(x.sshPort || 22))) continue;
       const dev = {
         id: store.nextId('dev'),
-        name: it.name || ('discovered-' + it.ip),
-        host: it.ip,
-        port: Number(it.port) || 22,
-        vendor: it.vendor || 'generic',
-        model: it.model || '',
+        name: x.name,
+        host: x.ip,
+        port: Number(x.sshPort) || 22,
+        vendor: x.vendor,
+        model: x.model,
         location: '', tags: ['discovered'],
         username: username || '', passwordEnc: require('./crypto').encrypt(password || ''),
-        pagerOff: '', transport: it.vendor === 'mikrotik' ? 'ssh' : 'ssh',
-        enabled: true, notes: (it.os ? 'OS terdeteksi: ' + it.os + '. ' : '') + 'hasil discovery ' + new Date().toISOString().slice(0, 10),
+        pagerOff: '',
+        transport: (x.vendor === 'mikrotik' && String(x.transport).startsWith('api')) ? x.transport : 'ssh',
+        apiPort: Number(x.apiPort) || undefined,
+        enabled: true,
+        notes: (x.os ? 'OS terdeteksi: ' + x.os + '. ' : '') + 'hasil discovery ' + new Date().toISOString().slice(0, 10),
         status: { online: null, latencyMs: null, lastChecked: null },
         createdAt: new Date().toISOString()
       };

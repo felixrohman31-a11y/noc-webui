@@ -227,7 +227,7 @@ export default function Devices() {
                           checked={!c.exists && (disc.picked?.[i] ?? true)}
                           onChange={v => setDisc(s => ({ ...s, picked: { ...(s.picked || {}), [i]: v } }))} /></td>
                         <td className="py-2 font-mono">{c.ip}</td>
-                        <td className="py-2 font-mono">{c.port}</td>
+                        <td className="py-2 font-mono">{c.port} <Badge color={c.port === 8728 ? 'violet' : 'slate'}>{c.port === 8728 ? 'API' : 'SSH'}</Badge></td>
                         <td className="py-2">
                           <select className="bg-[#0b1220] border border-[#1e2a44] rounded px-1 py-0.5 text-[11px] text-slate-200"
                             value={c.guessVendor}
@@ -255,14 +255,35 @@ export default function Devices() {
               <Button variant="ghost" onClick={() => setDisc(null)}>Tutup</Button>
               <Button disabled={!disc.results || disc.scanning}
                 onClick={async () => {
-                  const items = disc.results
-                    .map((c, i) => ({ c, sel: c.exists ? false : (disc.picked ? disc.picked[i] !== false : true) }))
-                    .filter(x => x.sel)
-                    .map(x => ({
-                      ip: x.c.ip, port: x.c.port, vendor: x.c.guessVendor,
-                      name: x.c.hostName || x.c.ip,
-                      model: x.c.model || '', os: x.c.os || ''
-                    }));
+                  // gabungkan baris per IP: port 8728 = API, lainnya = SSH
+                  const byIp = new Map();
+                  disc.results.forEach((c, i) => {
+                    if (c.exists) return;
+                    const sel = disc.picked ? disc.picked[i] !== false : true;
+                    if (!sel) return;
+                    const cur = byIp.get(c.ip) || {
+                      ip: c.ip, vendor: 'generic', name: c.hostName || c.ip,
+                      model: c.model || '', os: c.os || '',
+                      sshPort: null, apiPort: null, transport: 'ssh'
+                    };
+                    if (c.hostName) cur.name = c.hostName;
+                    if (c.model) cur.model = c.model;
+                    if (c.os) cur.os = c.os;
+                    if (c.port === 8728) {
+                      cur.apiPort = c.port;
+                      if (c.guessVendor === 'mikrotik') cur.vendor = 'mikrotik';
+                      if (cur.sshPort === null) cur.transport = 'api'; // hanya API tanpa SSH
+                    } else {
+                      cur.sshPort = c.port;
+                      cur.transport = cur.apiPort ? 'api' : 'ssh';
+                    }
+                    byIp.set(c.ip, cur);
+                  });
+                  const items = [...byIp.values()].map(x => ({
+                    ip: x.ip, port: x.sshPort || 22, vendor: x.vendor,
+                    transport: x.transport, apiPort: x.apiPort || undefined,
+                    name: x.name, model: x.model, os: x.os
+                  }));
                   if (!items.length) return toast.push('info', 'Tidak ada host dipilih');
                   try {
                     const r = await api.post('/api/discover/add', {
