@@ -10,19 +10,22 @@ const auth = require('./auth');
 const { getVendor, devicePassword } = require('./drivers/vendors');
 const { withSession, tcpProbe, probePort, isApiTransport } = require('./drivers/base');
 const { broadcast, pollOnce } = require('./scheduler');
+const { initRedis, checkRateLimit } = require('./rate-limiter');
 
 const router = express.Router();
 
-// ---- rate limiter ringan utk endpoint mahal ----
-const rlMap = new Map();
-function rateLimit(key, max, windowMs) {
-  const now = Date.now();
-  const arr = (rlMap.get(key) || []).filter(t => now - t < windowMs);
-  if (arr.length >= max) return false;
-  arr.push(now);
-  rlMap.set(key, arr);
-  return true;
+// ---- Redis rate limiter untuk endpoint mahal ----
+// Initialize Redis connection (will connect lazily)
+initRedis();
+
+async function rateLimit(key, max, windowMs) {
+  const result = await checkRateLimit('rl', key, {
+    points: max,
+    duration: Math.ceil(windowMs / 1000),
+  });
+  return result.allowed;
 }
+
 function tooMany(res) { return res.status(429).json({ error: 'Terlalu banyak permintaan — coba lagi nanti' }); }
 
 // ---- cache snapshot data Config UI (menstabilkan tabel dinamis spt BGP) ----
@@ -208,7 +211,7 @@ router.get('/devices/:id/interfaces', auth.authMiddleware, async (req, res) => {
 
 // Deteksi fakta one-off utk form (belum perlu device tersimpan)
 router.post('/devices/detect', auth.authMiddleware, async (req, res) => {
-  if (!rateLimit('det:' + req.ip, 10, 60000)) return tooMany(res);
+  if (!(await rateLimit('det:' + req.ip, 10, 60000))) return tooMany(res);
   const b = req.body || {};
   if (!b.host || !b.vendor) return res.status(400).json({ error: 'host & vendor wajib' });
   const v = getVendor(b.vendor);
@@ -264,7 +267,7 @@ router.post('/devices/:id/command', auth.authMiddleware, async (req, res) => {
   if (DESTRUCTIVE_RE.test(cmd)) {
     return res.status(400).json({ error: 'Perintah destruktif diblokir dari panel ini' });
   }
-  if (!rateLimit('cmd:' + req.ip, 60, 60000)) return tooMany(res);
+  if (!(await rateLimit('cmd:' + req.ip, 60, 60000))) return tooMany(res);
   try {
     const out = await withSession(d, devicePassword(d), async s => await s.run(cmd), store.getDb().settings.sshTimeoutMs + 15000);
     store.audit('command.run', `${d.name}: ${cmd}`, req.user.username);
